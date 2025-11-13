@@ -16,14 +16,26 @@ The Product Categorizer takes JSON product data from collector scripts (enhanced
 ### Installation
 
 ```bash
-# Install dependencies
+# Install core dependencies + GUI
+pip install -r requirements-gui.txt
+
+# Or just core dependencies (CLI only)
 pip install -r requirements.txt
+
+# For development (includes testing tools)
+pip install -r requirements-dev.txt
 ```
 
 ### Running the Application
 
+**GUI Mode (Recommended for interactive use):**
 ```bash
-python3 categorizer.py
+python3 gui.py
+```
+
+**CLI Mode (For automation and scripting):**
+```bash
+python3 main.py --input input/products.json --output output/enhanced.json --provider claude
 ```
 
 ## Configuration
@@ -176,23 +188,38 @@ For 100 products:
 
 ## Requirements
 
-- Python 3.7+
-- ttkbootstrap (GUI framework)
+**Core Dependencies:**
+- Python 3.12+
 - anthropic (Claude AI)
 - openai (OpenAI API)
 - requests
 
+**GUI Dependencies:**
+- ttkbootstrap (GUI framework)
+
+**Development Dependencies:**
+- pytest (testing)
+- pytest-cov (coverage)
+- black, flake8 (code quality)
+
 ## Architecture
 
 ```
-categorizer.py                  # Main GUI application
-categorizer_modules/
-  ├── __init__.py              # Package initialization
-  ├── config.py                # Configuration and logging
-  ├── ai_provider.py           # AI provider abstraction
-  ├── claude_api.py            # Claude API implementation
-  ├── openai_api.py            # OpenAI API implementation
-  └── taxonomy_search.py       # Shopify taxonomy matching
+categorizer/
+├── main.py                     # CLI entry point
+├── gui.py                      # GUI entry point
+├── src/                        # Application source code
+│   ├── __init__.py             # Package initialization
+│   ├── config.py               # Configuration and logging
+│   ├── ai_provider.py          # AI provider abstraction
+│   ├── claude_api.py           # Claude API implementation
+│   ├── openai_api.py           # OpenAI API implementation
+│   ├── taxonomy_search.py      # Shopify taxonomy matching
+│   └── utils.py                # Utility functions (image counting, prompts)
+├── tests/                      # Comprehensive test suite
+├── docs/                       # Documentation
+├── input/                      # Input JSON files
+└── output/                     # Enhanced output JSON files
 ```
 
 ## Support

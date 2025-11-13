@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Garoppos Product Categorizer - Main Entry Point
+Product Categorizer - GUI Entry Point
 
 Version 1.0.0
-AI-powered product categorization, weight estimation, and description enhancement.
+Graphical user interface for AI-powered product categorization, weight estimation,
+and description enhancement.
 
 This application takes product data from collectors (enhanced with images and data)
 and outputs categorized, AI-enhanced products ready for upload to Shopify.
@@ -19,19 +20,19 @@ import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from ttkbootstrap.tooltip import ToolTip
 
-# Import categorizer modules
+# Import src modules
 try:
-    from categorizer_modules.config import (
+    from src.config import (
         load_config,
         save_config,
         setup_logging,
         log_and_status,
         SCRIPT_VERSION
     )
-    from categorizer_modules.ai_provider import batch_enhance_products
+    from src.ai_provider import batch_enhance_products
 except ImportError as e:
-    print(f"Error importing categorizer_modules: {e}")
-    print("Make sure the categorizer_modules package is in the same directory as this script.")
+    print(f"Error importing src: {e}")
+    print("Make sure the src package is in the same directory as this script.")
     sys.exit(1)
 
 

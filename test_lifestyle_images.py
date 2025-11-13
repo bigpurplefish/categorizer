@@ -9,8 +9,8 @@ import json
 import sys
 import os
 
-# Add categorizer_modules to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'categorizer_modules'))
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from utils import count_images_per_variant, get_variants_needing_images, build_gemini_lifestyle_prompt_for_variant
 

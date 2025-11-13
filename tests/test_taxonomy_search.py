@@ -1,5 +1,5 @@
 """
-Tests for categorizer_modules/taxonomy_search.py
+Tests for src/taxonomy_search.py
 
 Tests Shopify taxonomy search functions and caching.
 """
@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from categorizer_modules import taxonomy_search
+from src import taxonomy_search
 
 
 # ============================================================================
@@ -160,7 +160,7 @@ class TestSaveTaxonomyCache:
 class TestSearchShopifyTaxonomy:
     """Tests for search_shopify_taxonomy() function."""
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_exact_match(self, mock_post, mock_shopify_taxonomy_response):
         """Test finding exact taxonomy match."""
         mock_response = Mock()
@@ -179,7 +179,7 @@ class TestSearchShopifyTaxonomy:
 
         assert result == "gid://shopify/TaxonomyCategory/aa_321"
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_contains_match(self, mock_post, mock_shopify_taxonomy_response):
         """Test finding taxonomy with contains match."""
         mock_response = Mock()
@@ -199,7 +199,7 @@ class TestSearchShopifyTaxonomy:
         assert result is not None
         assert "TaxonomyCategory" in result
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_keyword_match(self, mock_post, mock_shopify_taxonomy_response):
         """Test finding taxonomy with keyword match."""
         mock_response = Mock()
@@ -218,7 +218,7 @@ class TestSearchShopifyTaxonomy:
 
         assert result is not None
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_no_match(self, mock_post, mock_shopify_taxonomy_empty_response, caplog):
         """Test when no taxonomy match is found."""
         mock_response = Mock()
@@ -239,7 +239,7 @@ class TestSearchShopifyTaxonomy:
         assert result is None
         assert "No taxonomy results" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_graphql_error(self, mock_post, mock_shopify_taxonomy_error_response, caplog):
         """Test handling of GraphQL errors."""
         mock_response = Mock()
@@ -260,7 +260,7 @@ class TestSearchShopifyTaxonomy:
         assert result is None
         assert "GraphQL errors in taxonomy search" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_network_error(self, mock_post, caplog):
         """Test handling of network errors."""
         import requests
@@ -279,7 +279,7 @@ class TestSearchShopifyTaxonomy:
         assert result is None
         assert "Network error searching taxonomy" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_unexpected_error(self, mock_post, caplog):
         """Test handling of unexpected errors."""
         mock_post.side_effect = ValueError("Unexpected error")
@@ -297,7 +297,7 @@ class TestSearchShopifyTaxonomy:
         assert result is None
         assert "Unexpected error searching taxonomy" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_pagination(self, mock_post):
         """Test taxonomy search with pagination."""
         # First page response
@@ -368,7 +368,7 @@ class TestSearchShopifyTaxonomy:
         assert result == "gid://shopify/TaxonomyCategory/2"
         assert mock_post.call_count == 2
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_with_status_fn(self, mock_post, mock_shopify_taxonomy_response, mock_status_fn):
         """Test search with status function callback."""
         mock_response = Mock()
@@ -397,7 +397,7 @@ class TestSearchShopifyTaxonomy:
 class TestFetchShopifyTaxonomyFromGithub:
     """Tests for fetch_shopify_taxonomy_from_github() function."""
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_successful_fetch(self, mock_get, temp_dir, monkeypatch):
         """Test successful fetch from GitHub."""
         monkeypatch.chdir(str(temp_dir))
@@ -416,7 +416,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         assert result[0]['fullName'] == "Animals & Pet Supplies"
         assert mock_get.called
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_uses_cache(self, mock_get, temp_dir, monkeypatch, caplog):
         """Test that function uses cached taxonomy if available and recent."""
         monkeypatch.chdir(str(temp_dir))
@@ -439,7 +439,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         assert "Using cached taxonomy" in caplog.text
         assert not mock_get.called
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_cache_expired(self, mock_get, temp_dir, monkeypatch):
         """Test that expired cache is refreshed."""
         monkeypatch.chdir(str(temp_dir))
@@ -465,7 +465,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         assert result[0]['id'] == "gid://shopify/TaxonomyCategory/new"
         assert mock_get.called
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_network_error_uses_stale_cache(self, mock_get, temp_dir, monkeypatch, caplog):
         """Test that stale cache is used as fallback on network error."""
         monkeypatch.chdir(str(temp_dir))
@@ -489,7 +489,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         assert len(result) == 1
         assert "Using stale cache as fallback" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_network_error_no_cache(self, mock_get, temp_dir, monkeypatch, caplog):
         """Test handling of network error with no cache available."""
         monkeypatch.chdir(str(temp_dir))
@@ -503,7 +503,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         assert result == []
         assert "Failed to fetch taxonomy from GitHub" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.get')
+    @patch('src.taxonomy_search.requests.get')
     def test_creates_cache_file(self, mock_get, temp_dir, monkeypatch):
         """Test that successful fetch creates cache file."""
         monkeypatch.chdir(str(temp_dir))
@@ -543,8 +543,8 @@ class TestGetTaxonomyId:
         assert "Using cached taxonomy ID" in caplog.text
         assert updated_cache == sample_taxonomy_cache  # Cache unchanged
 
-    @patch('categorizer_modules.taxonomy_search.search_shopify_taxonomy')
-    @patch('categorizer_modules.taxonomy_search.save_taxonomy_cache')
+    @patch('src.taxonomy_search.search_shopify_taxonomy')
+    @patch('src.taxonomy_search.save_taxonomy_cache')
     def test_not_cached_successful_search(self, mock_save, mock_search, sample_taxonomy_cache, temp_dir, caplog):
         """Test getting taxonomy ID when not cached, successful API search."""
         mock_search.return_value = "gid://shopify/TaxonomyCategory/new_123"
@@ -567,8 +567,8 @@ class TestGetTaxonomyId:
         assert "New Category" in updated_cache
         assert mock_save.called
 
-    @patch('categorizer_modules.taxonomy_search.search_shopify_taxonomy')
-    @patch('categorizer_modules.taxonomy_search.save_taxonomy_cache')
+    @patch('src.taxonomy_search.search_shopify_taxonomy')
+    @patch('src.taxonomy_search.save_taxonomy_cache')
     def test_not_cached_no_match(self, mock_save, mock_search, sample_taxonomy_cache, temp_dir, caplog):
         """Test getting taxonomy ID when not cached and no match found."""
         mock_search.return_value = None
@@ -607,7 +607,7 @@ class TestGetTaxonomyId:
         assert result is None
         assert updated_cache == sample_taxonomy_cache
 
-    @patch('categorizer_modules.taxonomy_search.search_shopify_taxonomy')
+    @patch('src.taxonomy_search.search_shopify_taxonomy')
     def test_hierarchical_fallback(self, mock_search, sample_taxonomy_cache):
         """Test fallback strategy for hierarchical categories."""
         # First call fails, second call succeeds
@@ -629,7 +629,7 @@ class TestGetTaxonomyId:
         assert result == "gid://shopify/TaxonomyCategory/found_789"
         assert mock_search.call_count >= 2
 
-    @patch('categorizer_modules.taxonomy_search.search_shopify_taxonomy')
+    @patch('src.taxonomy_search.search_shopify_taxonomy')
     def test_last_word_fallback(self, mock_search, sample_taxonomy_cache):
         """Test fallback strategy using last word."""
         # First call fails, last word succeeds
@@ -650,7 +650,7 @@ class TestGetTaxonomyId:
 
         assert result == "gid://shopify/TaxonomyCategory/name_456"
 
-    @patch('categorizer_modules.taxonomy_search.search_shopify_taxonomy')
+    @patch('src.taxonomy_search.search_shopify_taxonomy')
     def test_with_status_fn(self, mock_search, sample_taxonomy_cache, mock_status_fn):
         """Test get_taxonomy_id with status function callback."""
         mock_search.return_value = "gid://shopify/TaxonomyCategory/test_123"
@@ -677,7 +677,7 @@ class TestGetTaxonomyId:
 class TestFetchAllShopifyCategories:
     """Tests for fetch_all_shopify_categories() function."""
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_successful_fetch(self, mock_post, mock_shopify_taxonomy_response):
         """Test successful fetch of all categories."""
         mock_response = Mock()
@@ -694,7 +694,7 @@ class TestFetchAllShopifyCategories:
         assert result[0]['id'] == "gid://shopify/TaxonomyCategory/aa_321"
         assert result[0]['fullName'] == "Home & Garden > Lawn & Garden > Pavers and Hardscaping"
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_fetch_with_pagination(self, mock_post):
         """Test fetching categories with multiple pages."""
         # First page
@@ -749,7 +749,7 @@ class TestFetchAllShopifyCategories:
         assert len(result) == 2
         assert mock_post.call_count == 2
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_graphql_error(self, mock_post, caplog):
         """Test handling of GraphQL errors."""
         mock_response = Mock()
@@ -768,7 +768,7 @@ class TestFetchAllShopifyCategories:
         assert result == []
         assert "GraphQL errors" in caplog.text
 
-    @patch('categorizer_modules.taxonomy_search.requests.post')
+    @patch('src.taxonomy_search.requests.post')
     def test_network_error(self, mock_post, caplog):
         """Test handling of network errors."""
         import requests

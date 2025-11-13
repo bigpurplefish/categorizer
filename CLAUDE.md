@@ -12,7 +12,10 @@ This is a Python GUI application for enriching product data with AI-powered taxo
 - **Collection Descriptions**: Generates SEO-optimized descriptions for product collections
 - **Purchase Options Analysis**: Identifies primary purchase considerations (price, quality, features, etc.)
 
-**Main Script:** `categorizer.py`
+**Entry Points:**
+- `gui.py` - Graphical user interface (recommended for interactive use)
+- `main.py` - Command-line interface (recommended for automation)
+
 **Current Version:** 1.0.0
 
 ## Shared Requirements
@@ -62,20 +65,41 @@ Example workflow:
 ## Development Commands
 
 ### Running the Application
+
+**GUI Mode (Interactive):**
 ```bash
-python3 categorizer.py
+python3 gui.py
+```
+
+**CLI Mode (Automation/Scripting):**
+```bash
+python3 main.py --input input/products.json --output output/enhanced.json --provider claude
 ```
 
 ### Installing Dependencies
+
+**Production (Core functionality):**
 ```bash
 pip install -r requirements.txt
 ```
 
-Required packages:
-- `ttkbootstrap>=1.10.0` - Modern themed tkinter GUI
+**Production + GUI:**
+```bash
+pip install -r requirements-gui.txt
+```
+
+**Development (All dependencies + testing tools):**
+```bash
+pip install -r requirements-dev.txt
+```
+
+**Required Packages:**
 - `requests>=2.28.0` - HTTP library for API calls
 - `anthropic>=0.18.0` - Claude AI API client
 - `openai>=1.0.0` - OpenAI API client
+- `ttkbootstrap>=1.10.0` - GUI framework (requirements-gui.txt only)
+- `pytest>=7.4.0` - Testing framework (requirements-dev.txt only)
+- `pytest-cov>=4.1.0` - Coverage reporting (requirements-dev.txt only)
 
 ## Input/Output
 
@@ -97,13 +121,33 @@ Enhanced JSON with additional fields:
 
 ## Architecture
 
+### Project Structure
+
+```
+categorizer/
+├── main.py                 # CLI entry point
+├── gui.py                  # GUI entry point
+├── src/                    # Application source code
+│   ├── ai_provider.py      # Abstract AI provider interface
+│   ├── claude_api.py       # Claude (Anthropic) implementation
+│   ├── openai_api.py       # OpenAI implementation
+│   ├── taxonomy_search.py  # Shopify taxonomy search and matching
+│   ├── utils.py            # Utility functions (image counting, prompt generation)
+│   └── config.py           # Configuration management
+├── tests/                  # Comprehensive test suite
+├── docs/                   # Project-specific documentation
+├── input/                  # Input JSON files
+└── output/                 # Enhanced output JSON files
+```
+
 ### Core Modules
 
-- **`categorizer_modules/ai_provider.py`**: Abstract AI provider interface
-- **`categorizer_modules/claude_api.py`**: Claude (Anthropic) implementation
-- **`categorizer_modules/openai_api.py`**: OpenAI implementation
-- **`categorizer_modules/taxonomy_search.py`**: Shopify taxonomy search and matching
-- **`categorizer_modules/utils.py`**: Utility functions
+- **`src/ai_provider.py`**: Abstract AI provider interface
+- **`src/claude_api.py`**: Claude (Anthropic) implementation
+- **`src/openai_api.py`**: OpenAI implementation
+- **`src/taxonomy_search.py`**: Shopify taxonomy search and matching
+- **`src/utils.py`**: Utility functions (image counting, lifestyle prompts)
+- **`src/config.py`**: Configuration management and logging
 
 ### Data Flow
 
@@ -214,23 +258,34 @@ When making changes to this project:
 
 ### Running Tests
 ```bash
+# Run all tests
 python -m pytest tests/ -v
-python -m pytest tests/ --cov=categorizer_modules --cov-report=term-missing
+
+# Run with coverage
+python -m pytest tests/ --cov=src --cov-report=html --cov-report=term
+
+# Run specific test file
+pytest tests/test_ai_provider.py -v
+
+# View coverage report
+open htmlcov/index.html
 ```
 
-### Test Coverage Goals
-- Overall coverage: 90%+
-- Core modules: 95%+
-- AI integration: 85%+
+### Test Coverage Status
+- `src/utils.py` - 100% coverage
+- `src/ai_provider.py` - 100% coverage
+- `src/config.py` - 100% coverage
+- `src/taxonomy_search.py` - ~89% coverage
+- Overall: ~39% (integration modules like claude_api.py and openai_api.py require extensive mocking)
 
 ### Test Structure
-- `tests/test_ai_provider.py` - AI provider abstraction
-- `tests/test_claude_api.py` - Claude-specific tests
-- `tests/test_openai_api.py` - OpenAI-specific tests
+- `tests/test_ai_provider.py` - AI provider abstraction (39 tests)
 - `tests/test_taxonomy_search.py` - Taxonomy search and matching
-- `tests/test_utils.py` - Utility functions
-- `tests/test_gui.py` - GUI components (as applicable)
+- `tests/test_utils.py` - Utility functions (27 tests)
+- `tests/test_config.py` - Configuration management
+- `tests/conftest.py` - Shared pytest fixtures
 
-## Entry Point
+## Entry Points
 
-Main execution starts in `categorizer.py`: `build_gui()` function creates the tkinter application and enters the event loop.
+- **GUI Mode**: `gui.py` - Tkinter GUI with ttkbootstrap theme, thread-safe processing
+- **CLI Mode**: `main.py` - Command-line interface with argparse, suitable for automation

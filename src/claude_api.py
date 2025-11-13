@@ -133,6 +133,17 @@ For each variant, generate a comprehensive Gemini prompt that includes:
 The lifestyle_images_prompt field in your response should be a dictionary keyed by variant identifier (e.g., "50_LB"), where each value contains "images_needed" (integer) and "prompt" (string).
 """
 
+    # Build the lifestyle images prompt example if needed
+    lifestyle_example = ""
+    if variants_needing_images:
+        lifestyle_example = ''',
+  "lifestyle_images_prompt": {
+    "50_LB": {
+      "images_needed": 3,
+      "prompt": "Full Gemini prompt text here for generating 3 lifestyle images..."
+    }
+  }'''
+
     prompt = f"""You are a product categorization expert. Given the product information below, assign it to the appropriate category in our taxonomy{"and generate lifestyle image prompts for variants needing additional images" if variants_needing_images else ""}.
 
 {taxonomy_doc}
@@ -151,13 +162,7 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
   "department": "Exact department name from taxonomy",
   "category": "Exact category name from taxonomy",
   "subcategory": "Exact subcategory name from taxonomy (or empty string if category has no subcategories)",
-  "reasoning": "Brief 1-sentence explanation of why you chose this categorization"{"," if variants_needing_images else ""}
-  {"lifestyle_images_prompt" if variants_needing_images else ""}{":" if variants_needing_images else ""} {"{" if variants_needing_images else ""}
-    {"\"50_LB\": {" if variants_needing_images else ""}
-      {"\"images_needed\": 3," if variants_needing_images else ""}
-      {"\"prompt\": \"Full Gemini prompt text here for generating 3 lifestyle images...\"" if variants_needing_images else ""}
-    {"}" if variants_needing_images else ""}
-  {"}" if variants_needing_images else ""}
+  "reasoning": "Brief 1-sentence explanation of why you chose this categorization"{lifestyle_example}
 }}"""
 
     return prompt
@@ -178,6 +183,7 @@ def build_description_prompt(title: str, body_html: str, department: str, voice_
         Formatted prompt string
     """
     audience_context = f"\nTarget Audience: {audience_name}" if audience_name else ""
+    audience_instruction = f"AUDIENCE: Tailor this description specifically for {audience_name}. Use language, benefits, and examples that resonate with this audience.\n\n" if audience_name else ""
 
     prompt = f"""You are a professional product copywriter. Rewrite this product description following our voice and tone guidelines.
 
@@ -188,7 +194,7 @@ Product information:
 - Department: {department}
 - Current Description: {body_html}{audience_context}
 
-{"AUDIENCE: Tailor this description specifically for " + audience_name + ". Use language, benefits, and examples that resonate with this audience.\n" if audience_name else ""}
+{audience_instruction}
 
 Your task:
 1. Read the current description to understand the product's features and benefits
@@ -198,7 +204,7 @@ Your task:
    - Prefer imperative-first phrasing (e.g., "Support...", "Keep...", "Help...")
    - Avoid generic phrases like "premium", "must-have", "high-quality"
    - Focus on benefits and use cases, not just features
-   - Ensure proper punctuation (no encoded characters like \\u2019)
+   - Ensure proper punctuation (no encoded characters like \u2019)
    - Make it unique and natural (vary your phrasing)
 
 4. SEO Optimization requirements:
@@ -249,7 +255,7 @@ Your task:
    - Prefer imperative-first phrasing when appropriate
    - Avoid generic phrases like "premium", "must-have", "high-quality"
    - Focus on what the collection offers and who it's for
-   - Ensure proper punctuation (no encoded characters like \\u2019)
+   - Ensure proper punctuation (no encoded characters like \u2019)
    - Make it compelling and natural
 
 4. SEO Optimization requirements:
