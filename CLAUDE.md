@@ -208,7 +208,7 @@ When making changes to this project:
 4. ✅ If approved, create a meaningful commit with descriptive message
 5. ✅ Include "🤖 Generated with Claude Code" footer
 
-**Repository:** https://github.com/bigpurplefish/garoppos-categorizer
+**Repository:** https://github.com/bigpurplefish/categorizer
 
 ## Testing
 
