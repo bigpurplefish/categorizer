@@ -1,0 +1,66 @@
+# Categorizer .gitignore
+
+# Configuration files (contain API keys)
+config.json
+
+# Cache files
+product_taxonomy.json
+shopify_taxonomy_cache.json
+claude_enhanced_cache.json
+coverage.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Input/Output files (keep directories, ignore contents)
+input/*.json
+output/*.json
+!input/.gitkeep
+!output/.gitkeep
+
+# Virtual environments
+venv/
+env/
+ENV/
