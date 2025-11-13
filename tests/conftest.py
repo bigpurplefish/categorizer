@@ -343,9 +343,9 @@ def project_root():
 
 
 @pytest.fixture
-def categorizer_modules_path(project_root):
-    """Get categorizer_modules directory path."""
-    return project_root / "categorizer_modules"
+def src_path(project_root):
+    """Get src directory path."""
+    return project_root / "src"
 
 
 # ============================================================================

@@ -1,0 +1,5 @@
+# Include core dependencies
+-r requirements.txt
+
+# GUI Framework
+ttkbootstrap>=1.10.0

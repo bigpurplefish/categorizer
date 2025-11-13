@@ -1,5 +1,5 @@
 """
-Tests for categorizer_modules/ai_provider.py
+Tests for src/ai_provider.py
 
 Tests AI provider abstraction layer that routes requests to Claude or OpenAI.
 """
@@ -8,7 +8,7 @@ import pytest
 import json
 import os
 from unittest.mock import Mock, patch, mock_open, MagicMock
-from categorizer_modules.ai_provider import (
+from src.ai_provider import (
     load_cache,
     save_cache,
     compute_product_hash,
@@ -40,7 +40,7 @@ class TestLoadCache:
         cache_file = tmp_path / "test_cache.json"
         cache_file.write_text(json.dumps(cache_data))
 
-        with patch('categorizer_modules.ai_provider.CACHE_FILE', str(cache_file)):
+        with patch('src.ai_provider.CACHE_FILE', str(cache_file)):
             with patch('os.path.exists', return_value=True):
                 cache = load_cache()
                 assert cache == cache_data
@@ -50,7 +50,7 @@ class TestLoadCache:
         cache_file = tmp_path / "test_cache.json"
         cache_file.write_text("{ invalid json")
 
-        with patch('categorizer_modules.ai_provider.CACHE_FILE', str(cache_file)):
+        with patch('src.ai_provider.CACHE_FILE', str(cache_file)):
             with patch('os.path.exists', return_value=True):
                 cache = load_cache()
                 assert cache == {"cache_version": "1.0", "products": {}}
@@ -74,7 +74,7 @@ class TestSaveCache:
         }
         cache_file = tmp_path / "test_cache.json"
 
-        with patch('categorizer_modules.ai_provider.CACHE_FILE', str(cache_file)):
+        with patch('src.ai_provider.CACHE_FILE', str(cache_file)):
             save_cache(cache_data)
 
             # Verify file was created and contents are correct
@@ -173,7 +173,7 @@ class TestLoadMarkdownFile:
 class TestEnhanceProduct:
     """Test enhance_product function."""
 
-    @patch('categorizer_modules.ai_provider.claude_api')
+    @patch('src.ai_provider.claude_api')
     def test_enhance_with_claude(self, mock_claude_api):
         """Test enhancing product with Claude provider."""
         product = {"title": "Test Product"}
@@ -196,7 +196,7 @@ class TestEnhanceProduct:
         mock_claude_api.enhance_product_with_claude.assert_called_once()
         assert result["product_type"] == "Pet Supplies"
 
-    @patch('categorizer_modules.ai_provider.openai_api')
+    @patch('src.ai_provider.openai_api')
     def test_enhance_with_openai(self, mock_openai_api):
         """Test enhancing product with OpenAI provider."""
         product = {"title": "Test Product"}
@@ -243,7 +243,7 @@ class TestEnhanceProduct:
         with pytest.raises(ValueError, match="Unknown AI provider"):
             enhance_product(product, "", "", cfg)
 
-    @patch('categorizer_modules.ai_provider.claude_api')
+    @patch('src.ai_provider.claude_api')
     def test_enhance_with_audience_config_single(self, mock_claude_api):
         """Test enhancing with single audience configuration."""
         product = {"title": "Test Product"}
@@ -264,7 +264,7 @@ class TestEnhanceProduct:
         assert audience_config["count"] == 1
         assert audience_config["audience_1_name"] == "Homeowners"
 
-    @patch('categorizer_modules.ai_provider.claude_api')
+    @patch('src.ai_provider.claude_api')
     def test_enhance_with_audience_config_dual(self, mock_claude_api):
         """Test enhancing with dual audience configuration."""
         product = {"title": "Test Product"}
@@ -293,7 +293,7 @@ class TestEnhanceProduct:
 class TestGenerateCollectionDescription:
     """Test generate_collection_description function."""
 
-    @patch('categorizer_modules.ai_provider.claude_api')
+    @patch('src.ai_provider.claude_api')
     def test_generate_with_claude(self, mock_claude_api):
         """Test generating collection description with Claude."""
         cfg = {
@@ -315,7 +315,7 @@ class TestGenerateCollectionDescription:
         mock_claude_api.generate_collection_description.assert_called_once()
         assert result == "Test description"
 
-    @patch('categorizer_modules.ai_provider.openai_api')
+    @patch('src.ai_provider.openai_api')
     def test_generate_with_openai(self, mock_openai_api):
         """Test generating collection description with OpenAI."""
         cfg = {
@@ -362,10 +362,10 @@ class TestGenerateCollectionDescription:
 class TestBatchEnhanceProducts:
     """Test batch_enhance_products function."""
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_basic(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test basic batch enhancement."""
         products = [
@@ -393,7 +393,7 @@ class TestBatchEnhanceProducts:
         assert result[1]["product_type"] == "Lawn and Garden"
         mock_save_cache.assert_called()
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.load_markdown_file')
     def test_batch_enhance_missing_taxonomy(self, mock_load_md):
         """Test error when taxonomy document is missing."""
         products = [{"title": "Product 1"}]
@@ -405,7 +405,7 @@ class TestBatchEnhanceProducts:
         with pytest.raises(FileNotFoundError, match="Failed to load taxonomy document"):
             batch_enhance_products(products, cfg, status_fn)
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.load_markdown_file')
     def test_batch_enhance_missing_voice_tone(self, mock_load_md):
         """Test error when voice/tone document is missing."""
         products = [{"title": "Product 1"}]
@@ -436,10 +436,10 @@ class TestBatchEnhanceProducts:
         with pytest.raises(ValueError, match="API key not configured"):
             batch_enhance_products(products, cfg, status_fn)
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     @patch('time.sleep')
     def test_batch_enhance_with_rate_limiting(self, mock_sleep, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test that rate limiting pause is applied."""
@@ -456,8 +456,8 @@ class TestBatchEnhanceProducts:
         # Should have one rate limit pause after 5 products
         mock_sleep.assert_called_once_with(6)
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.load_cache')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.load_cache')
     def test_batch_enhance_uses_cache(self, mock_load_cache, mock_load_md):
         """Test that cached products are used."""
         product = {"title": "Product 1", "body_html": "Desc"}
@@ -490,10 +490,10 @@ class TestBatchEnhanceProducts:
         assert result[0]["body_html"] == "<p>Enhanced</p>"
         assert result[0]["shopify_category_id"] == "gid://shopify/123"
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_saves_to_cache(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test that enhanced products are saved to cache."""
         product = {"title": "Product 1", "body_html": "Desc"}
@@ -522,10 +522,10 @@ class TestBatchEnhanceProducts:
         assert cached_product["enhanced_description"] == "<p>Enhanced</p>"
         assert cached_product["shopify_category_id"] == "gid://shopify/123"
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_stops_on_error(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test that batch processing stops on first error."""
         products = [
@@ -553,10 +553,10 @@ class TestBatchEnhanceProducts:
         assert mock_enhance.call_count == 2
         mock_save_cache.assert_called()  # Cache should be saved even on error
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_with_openai(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test batch enhancement with OpenAI provider."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
@@ -575,7 +575,7 @@ class TestBatchEnhanceProducts:
         shopify_api_mock = MagicMock()
         shopify_api_mock.fetch_shopify_taxonomy_from_github.return_value = [{"id": "cat1", "name": "Category 1"}]
 
-        with patch.dict('sys.modules', {'categorizer_modules.shopify_api': shopify_api_mock}):
+        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
             result = batch_enhance_products(products, cfg, status_fn)
 
         assert len(result) == 1
@@ -583,10 +583,10 @@ class TestBatchEnhanceProducts:
         # Verify Shopify taxonomy was fetched for OpenAI
         shopify_api_mock.fetch_shopify_taxonomy_from_github.assert_called_once()
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_openai_shopify_fetch_fails(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test OpenAI batch enhancement when Shopify taxonomy fetch fails."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
@@ -605,17 +605,17 @@ class TestBatchEnhanceProducts:
         shopify_api_mock = MagicMock()
         shopify_api_mock.fetch_shopify_taxonomy_from_github.side_effect = Exception("Fetch failed")
 
-        with patch.dict('sys.modules', {'categorizer_modules.shopify_api': shopify_api_mock}):
+        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
             # Should continue despite Shopify fetch failure
             result = batch_enhance_products(products, cfg, status_fn)
 
         assert len(result) == 1
         assert result[0]["product_type"] == "Pet Supplies"
 
-    @patch('categorizer_modules.ai_provider.load_markdown_file')
-    @patch('categorizer_modules.ai_provider.save_cache')
-    @patch('categorizer_modules.ai_provider.load_cache')
-    @patch('categorizer_modules.ai_provider.enhance_product')
+    @patch('src.ai_provider.load_markdown_file')
+    @patch('src.ai_provider.save_cache')
+    @patch('src.ai_provider.load_cache')
+    @patch('src.ai_provider.enhance_product')
     def test_batch_enhance_openai_shopify_returns_empty(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test OpenAI batch enhancement when Shopify taxonomy returns empty list."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
@@ -634,7 +634,7 @@ class TestBatchEnhanceProducts:
         shopify_api_mock = MagicMock()
         shopify_api_mock.fetch_shopify_taxonomy_from_github.return_value = []
 
-        with patch.dict('sys.modules', {'categorizer_modules.shopify_api': shopify_api_mock}):
+        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
             # Should continue despite empty Shopify taxonomy
             result = batch_enhance_products(products, cfg, status_fn)
 

@@ -1,11 +1,11 @@
 """
-Tests for categorizer_modules/utils.py
+Tests for src/utils.py
 
 Tests image counting, variant detection, and lifestyle image prompt generation.
 """
 
 import pytest
-from categorizer_modules.utils import (
+from src.utils import (
     count_images_per_variant,
     get_variants_needing_images,
     build_gemini_lifestyle_prompt_for_variant

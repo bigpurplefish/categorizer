@@ -1072,6 +1072,67 @@ def generate_collection_description(
 
 # ========== PROMPT BUILDERS (MATCHING CLAUDE API PROMPTS) ==========
 
+def _build_lifestyle_section(variants_needing_images: Dict = None) -> str:
+    """Build the lifestyle image prompt generation section."""
+    if not variants_needing_images:
+        return ""
+
+    # Build the variants list
+    variants_list = []
+    for variant_id, info in variants_needing_images.items():
+        variant_option = info.get("variant_option_value", variant_id)
+        images_needed = info.get("images_needed", 0)
+        existing_count = info.get("existing_count", 0)
+        variants_list.append(f"- Variant '{variant_option}': needs {images_needed} more images (currently has {existing_count})")
+
+    variants_text = "\n".join(variants_list)
+
+    return f'''
+**STEP 5: LIFESTYLE IMAGE PROMPT GENERATION**
+
+Some product variants need additional lifestyle images for their Shopify product gallery. For each variant listed below, generate a detailed prompt for Gemini Flash 2.5 to create photorealistic lifestyle product images.
+
+Variants needing images:
+{variants_text}
+
+For each variant, generate a comprehensive Gemini prompt that includes:
+
+1. **Photorealism Requirements:**
+   - Images must be photorealistic, professional product photography quality
+   - Natural lighting and realistic shadows
+   - Sharp focus on the product
+
+2. **Lifestyle Context:**
+   - Show the product being used in an appropriate, realistic setting based on the assigned taxonomy category
+   - Include people and/or animals when appropriate for the product type
+   - People should be actively using or interacting with the product
+   - Settings should match the product's intended use case
+
+3. **Subject Demographics (when people are included):**
+   - Analyze the product and its assigned taxonomy to determine the most likely customer demographic
+   - Store is located in Newfield, NJ 08009 - a rural South Jersey community
+   - For farm/livestock/agricultural products: Show working professionals in appropriate work attire
+   - For pet products: Show families or individuals of diverse ages who would own pets
+   - For garden/landscape products: Show homeowners and DIY enthusiasts
+   - For hunting/fishing: Show outdoor enthusiasts in appropriate gear
+   - All people should be smiling and appear genuinely happy while using the product
+   - Reflect diversity appropriate to rural South Jersey demographics
+
+4. **Uniqueness and Storytelling:**
+   - Each image should tell a different story or show a different use case
+   - Vary settings, angles, and scenarios across the image set
+   - Show different benefits or features of the product
+   - Create a cohesive visual story of satisfied customers enjoying the product
+
+5. **Technical Specifications:**
+   - Aspect ratio: Square (1:1)
+   - Resolution: 2048x2048 pixels
+   - Suitable for Shopify product gallery display
+
+The lifestyle_images_prompt field in your response should be a dictionary keyed by variant identifier (e.g., "50_LB"), where each value contains "images_needed" (integer) and "prompt" (string).
+'''
+
+
 def _build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None, variants_needing_images: Dict = None) -> str:
     """
     Build enhanced prompt for taxonomy assignment + weight estimation + purchase options + lifestyle image prompts.
@@ -1095,7 +1156,11 @@ def _build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, curren
         if size_info:
             dimensions_info = f"\n- Size/Dimensions: {size_info}"
 
-    current_weight_info = f"\n- Current Weight (variant.weight): {current_weight} lb" if current_weight > 0 else "\n- Current Weight (variant.weight): Not specified"
+    # Build current weight info string
+    if current_weight > 0:
+        current_weight_info = f"\n- Current Weight (variant.weight): {current_weight} lb"
+    else:
+        current_weight_info = "\n- Current Weight (variant.weight): Not specified"
 
     # Load packaging reference document
     packaging_doc = """
@@ -1228,50 +1293,7 @@ Set needs_review = true if:
 - Product is unusual or doesn't fit standard categories
 - Insufficient information to make confident estimates
 
-{f"""
-**STEP 5: LIFESTYLE IMAGE PROMPT GENERATION**
-
-Some product variants need additional lifestyle images for their Shopify product gallery. For each variant listed below, generate a detailed prompt for Gemini Flash 2.5 to create photorealistic lifestyle product images.
-
-Variants needing images:
-{chr(10).join([f"- Variant '{info['variant_option_value']}': needs {info['images_needed']} more images (currently has {info['existing_count']})" for info in variants_needing_images.values()])}
-
-For each variant, generate a comprehensive Gemini prompt that includes:
-
-1. **Photorealism Requirements:**
-   - Images must be photorealistic, professional product photography quality
-   - Natural lighting and realistic shadows
-   - Sharp focus on the product
-
-2. **Lifestyle Context:**
-   - Show the product being used in an appropriate, realistic setting based on the assigned taxonomy category
-   - Include people and/or animals when appropriate for the product type
-   - People should be actively using or interacting with the product
-   - Settings should match the product's intended use case
-
-3. **Subject Demographics (when people are included):**
-   - Analyze the product and its assigned taxonomy to determine the most likely customer demographic
-   - Store is located in Newfield, NJ 08009 - a rural South Jersey community
-   - For farm/livestock/agricultural products: Show working professionals in appropriate work attire
-   - For pet products: Show families or individuals of diverse ages who would own pets
-   - For garden/landscape products: Show homeowners and DIY enthusiasts
-   - For hunting/fishing: Show outdoor enthusiasts in appropriate gear
-   - All people should be smiling and appear genuinely happy while using the product
-   - Reflect diversity appropriate to rural South Jersey demographics
-
-4. **Uniqueness and Storytelling:**
-   - Each image should tell a different story or show a different use case
-   - Vary settings, angles, and scenarios across the image set
-   - Show different benefits or features of the product
-   - Create a cohesive visual story of satisfied customers enjoying the product
-
-5. **Technical Specifications:**
-   - Aspect ratio: Square (1:1)
-   - Resolution: 2048x2048 pixels
-   - Suitable for Shopify product gallery display
-
-The lifestyle_images_prompt field in your response should be a dictionary keyed by variant identifier (e.g., "50_LB"), where each value contains "images_needed" (integer) and "prompt" (string).
-""" if variants_needing_images else ""}
+{_build_lifestyle_section(variants_needing_images)}
 
 Return ONLY a valid JSON object in this exact format (no markdown, no code blocks, no explanation):
 {{
@@ -1291,13 +1313,7 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
     "reasoning": "Explain how you calculated/estimated the weight"
   }},
   "purchase_options": [1, 2, 3, 4, 5],
-  "needs_review": false{"," if variants_needing_images else ""}
-  {"lifestyle_images_prompt" if variants_needing_images else ""}{":" if variants_needing_images else ""} {"{" if variants_needing_images else ""}
-    {"\"50_LB\": {" if variants_needing_images else ""}
-      {"\"images_needed\": 3," if variants_needing_images else ""}
-      {"\"prompt\": \"Full Gemini prompt text here for generating 3 lifestyle images...\"" if variants_needing_images else ""}
-    {"}" if variants_needing_images else ""}
-  {"}" if variants_needing_images else ""}
+  "needs_review": false
 }}
 
 EXAMPLE - Using existing variant.weight:
@@ -1454,7 +1470,7 @@ Your task:
    - Prefer imperative-first phrasing when appropriate
    - Avoid generic phrases like "premium", "must-have", "high-quality"
    - Focus on what the collection offers and who it's for
-   - Ensure proper punctuation (no encoded characters like \\u2019)
+   - Ensure proper punctuation (no encoded characters like \u2019)
    - Make it compelling and natural
 
 4. SEO Optimization requirements:
