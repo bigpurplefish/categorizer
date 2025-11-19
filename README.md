@@ -69,6 +69,37 @@ The application uses shared documentation:
 
 These paths are configured in `config.json` and can be modified if needed.
 
+### Batch Mode (50% Cost Savings)
+
+**NEW:** Both Claude and OpenAI now support batch processing with **50% cost savings**!
+
+**Benefits:**
+- Cut API costs in half
+- Same model quality and accuracy
+- Perfect for processing large product catalogs
+
+**How to Enable:**
+
+*GUI:* Settings → API Settings → Enable "Batch Processing (50% Cost Savings)"
+
+*CLI:* Add `--batch-mode` flag:
+```bash
+python3 main.py --input products.json --output enhanced.json --provider openai --batch-mode
+```
+
+**How It Works:**
+- Products are submitted as a single batch job
+- Processing happens asynchronously (completes within 24 hours)
+- Application polls for completion and downloads results
+- Best for 10+ products (overhead not worth it for smaller batches)
+
+**Cost Comparison Example (100 products):**
+- Standard: ~$2.50
+- Batch: ~$1.25
+- **You save: $1.25 (50%)**
+
+See [CLAUDE.md](CLAUDE.md#batch-mode-50-cost-savings) for detailed documentation.
+
 ## Workflow
 
 ```
@@ -118,6 +149,40 @@ Identifies applicable fulfillment methods:
 - Option 3: Local Delivery (within service area)
 - Option 4: White Glove Delivery (premium items)
 - Option 5: Customer Pickup Only (hay, bulk items)
+
+### 5. Batch Processing Controls
+
+The GUI provides flexible controls for processing large batches efficiently:
+
+**Processing Mode:**
+- **Skip Processed Records** (default): Automatically resumes interrupted processing by skipping products that already have enhanced data. Saves API costs and time when processing is interrupted.
+- **Overwrite All Records**: Forces re-processing of all products in range, overwriting existing enhanced data. Useful after updating taxonomy or voice/tone guidelines.
+
+**Record Range Selection:**
+- **Start Record**: Process from specific record number (1-based index). Leave blank to start from beginning.
+- **End Record**: Process until specific record number (1-based index). Leave blank to process all remaining.
+- Enables testing on small batches before processing full catalog.
+
+**Example Workflows:**
+```
+Resume after interruption:
+- Processing Mode: Skip
+- Start Record: (blank)
+- End Record: (blank)
+→ Automatically skips already-enhanced products
+
+Test on first 10 products:
+- Processing Mode: Overwrite
+- Start Record: 1
+- End Record: 10
+→ Processes exactly records 1-10
+
+Process from record 50 onward:
+- Processing Mode: Skip
+- Start Record: 50
+- End Record: (blank)
+→ Processes records 50 to end, skipping processed ones
+```
 
 ## Output Format
 

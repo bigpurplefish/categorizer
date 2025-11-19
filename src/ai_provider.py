@@ -247,6 +247,8 @@ def batch_enhance_products(
     """
     Enhance multiple products with configured AI provider using caching.
 
+    Routes to batch API if USE_BATCH_MODE is enabled for 50% cost savings.
+
     Args:
         products: List of product dictionaries
         cfg: Configuration dictionary
@@ -261,6 +263,7 @@ def batch_enhance_products(
         Exception: Stops immediately on API failure
     """
     provider = cfg.get("AI_PROVIDER", "claude").lower()
+    use_batch_mode = cfg.get("USE_BATCH_MODE", False)
 
     # Validate provider and API key
     if provider == "openai":
@@ -297,6 +300,49 @@ def batch_enhance_products(
         raise FileNotFoundError(error_msg)
 
     log_and_status(status_fn, f"✅ Loaded enhancement documents")
+
+    # Check if batch mode is enabled
+    if use_batch_mode:
+        log_and_status(status_fn, f"🚀 Batch mode enabled: 50% cost savings")
+        log_and_status(status_fn, f"🤖 Using {provider_name} ({model}) - Batch API\n")
+
+        # Route to batch API functions
+        if provider == "openai":
+            # Load Shopify categories for OpenAI
+            shopify_categories = []
+            try:
+                from . import shopify_api
+                log_and_status(status_fn, f"Loading Shopify product taxonomy...")
+                shopify_categories = shopify_api.fetch_shopify_taxonomy_from_github(status_fn)
+                log_and_status(status_fn, f"")
+            except Exception as e:
+                logging.warning(f"Failed to fetch Shopify taxonomy: {e}")
+
+            return openai_api.enhance_products_with_openai_batch(
+                products,
+                taxonomy_doc,
+                voice_tone_doc,
+                shopify_categories,
+                api_key,
+                model,
+                completion_window=cfg.get("BATCH_COMPLETION_WINDOW", "24h"),
+                poll_interval=cfg.get("BATCH_POLL_INTERVAL", 60),
+                status_fn=status_fn,
+                audience_config=None
+            )
+        elif provider == "claude":
+            return claude_api.enhance_products_with_claude_batch(
+                products,
+                taxonomy_doc,
+                voice_tone_doc,
+                api_key,
+                model,
+                poll_interval=cfg.get("BATCH_POLL_INTERVAL", 60),
+                status_fn=status_fn,
+                audience_config=None
+            )
+
+    # Standard mode (not batch)
     log_and_status(status_fn, f"🤖 Using {provider_name} ({model})\n")
 
     # Fetch Shopify taxonomy categories from GitHub (for AI matching)

@@ -87,6 +87,11 @@ def main():
         action="store_true",
         help="Verbose output"
     )
+    parser.add_argument(
+        "--batch-mode",
+        action="store_true",
+        help="Enable batch processing mode for 50%% cost savings (asynchronous, 24hr completion)"
+    )
 
     args = parser.parse_args()
 
@@ -118,6 +123,9 @@ def main():
         config["TAXONOMY_DOC_PATH"] = args.taxonomy_doc
     if args.voice_tone_doc:
         config["VOICE_TONE_DOC_PATH"] = args.voice_tone_doc
+    if args.batch_mode:
+        config["USE_BATCH_MODE"] = True
+        print_status("Batch mode enabled: 50% cost savings, asynchronous processing")
 
     # Check for API keys
     if config.get("AI_PROVIDER") == "claude":

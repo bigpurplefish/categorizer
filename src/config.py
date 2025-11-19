@@ -13,6 +13,9 @@ SCRIPT_VERSION = "1.0.0 - Garoppos Product Categorizer"
 # File paths
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
+# Garoppos shared-docs directory (one level up from categorizer)
+GAROPPOS_DIR = os.path.dirname(APP_DIR)
+SHARED_DOCS_DIR = os.path.join(GAROPPOS_DIR, "shared-docs")
 
 
 def load_config():
@@ -26,12 +29,19 @@ def load_config():
         "_OPENAI_SETTINGS": "OpenAI/ChatGPT specific settings.",
         "OPENAI_API_KEY": "",
         "OPENAI_MODEL": "gpt-5",
+        "_BATCH_MODE_SETTINGS": "Batch API settings for cost savings (50% off standard pricing).",
+        "USE_BATCH_MODE": False,
+        "BATCH_COMPLETION_WINDOW": "24h",
+        "BATCH_POLL_INTERVAL": 60,
         "_USER SETTINGS": "These are user settings specified in the main UI.",
         "INPUT_FILE": "",
         "OUTPUT_FILE": "",
         "LOG_FILE": "",
-        "TAXONOMY_DOC_PATH": "/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md",
-        "VOICE_TONE_DOC_PATH": "/Users/moosemarketer/Code/shared-docs/python/VOICE_AND_TONE_GUIDELINES.md",
+        "TAXONOMY_DOC_PATH": os.path.join(SHARED_DOCS_DIR, "PRODUCT_TAXONOMY.md"),
+        "VOICE_TONE_DOC_PATH": os.path.join(SHARED_DOCS_DIR, "VOICE_AND_TONE_GUIDELINES.md"),
+        "PROCESSING_MODE": "skip",
+        "START_RECORD": "",
+        "END_RECORD": "",
         "WINDOW_GEOMETRY": "800x800"
     }
 

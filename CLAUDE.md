@@ -24,24 +24,26 @@ This is a Python GUI application for enriching product data with AI-powered taxo
 
 **Always reference shared docs - NEVER duplicate them locally.**
 
-### Shared Documentation Reference
+### Global Python Standards (Code/shared-docs)
 
-The following requirements are defined in shared-docs and should always be referenced (not duplicated):
+The following requirements apply to all Python projects and should always be referenced:
 
-- **[PRODUCT_TAXONOMY.md](../../../shared-docs/python/PRODUCT_TAXONOMY.md)** - Product categorization hierarchy and purchase options
-- **[PACKAGING_WEIGHT_REFERENCE.md](../../../shared-docs/python/PACKAGING_WEIGHT_REFERENCE.md)** - Shipping weight calculation guidelines
 - **[PROJECT_STRUCTURE_REQUIREMENTS.md](../../../shared-docs/python/PROJECT_STRUCTURE_REQUIREMENTS.md)** - Python project structure conventions
 - **[GIT_WORKFLOW.md](../../../shared-docs/python/GIT_WORKFLOW.md)** - Git commit and workflow standards
 - **[LOGGING_REQUIREMENTS.md](../../../shared-docs/python/LOGGING_REQUIREMENTS.md)** - Logging patterns and requirements
 - **[GUI_DESIGN_REQUIREMENTS.md](../../../shared-docs/python/GUI_DESIGN_REQUIREMENTS.md)** - GUI design standards
 - **[GRAPHQL_OUTPUT_REQUIREMENTS.md](../../../shared-docs/python/GRAPHQL_OUTPUT_REQUIREMENTS.md)** - GraphQL output format requirements
 - **[COMPLIANCE_CHECKLIST.md](../../../shared-docs/python/COMPLIANCE_CHECKLIST.md)** - Project compliance verification
+- **[PACKAGING_WEIGHT_REFERENCE.md](../../../shared-docs/python/PACKAGING_WEIGHT_REFERENCE.md)** - Shipping weight calculation guidelines
 
-### Project-Specific Documentation
+### Garoppos Project Documentation (garoppos/shared-docs)
 
-The following docs are specific to this project (kept in local `docs/`):
+The following docs are shared across all Garoppos projects (categorizer, uploader, etc.):
 
-- **`docs/VOICE_AND_TONE_GUIDELINES.md`** - Brand voice and tone for product descriptions
+- **[PRODUCT_TAXONOMY.md](../shared-docs/PRODUCT_TAXONOMY.md)** - Product categorization hierarchy and purchase options
+- **[VOICE_AND_TONE_GUIDELINES.md](../shared-docs/VOICE_AND_TONE_GUIDELINES.md)** - Brand voice and tone for product descriptions
+
+These are used by the AI to categorize products and write descriptions.
 
 ### Using Context7 for Documentation
 
@@ -165,7 +167,27 @@ Collector JSON → Load Products → AI Enhancement → Output Enhanced JSON
 - OpenAI settings: `OPENAI_API_KEY`, `OPENAI_MODEL`
 - File paths for input/output/logs
 - Taxonomy and voice/tone document paths
+- **Processing options**: `PROCESSING_MODE`, `START_RECORD`, `END_RECORD`
 - Window geometry for UI persistence
+
+### Processing Options
+
+The GUI provides flexible processing controls for batch operations:
+
+**Processing Mode:**
+- **Skip Processed Records** (default): Resumes interrupted processing by skipping products that already have enhanced data (taxonomy assigned). Ideal for resuming after interruptions or errors.
+- **Overwrite All Records**: Re-processes all products in the range, overwriting any existing enhanced data. Use for re-running after configuration changes.
+
+**Record Range:**
+- **Start Record** (optional, 1-based): Begin processing from specific record number. Leave blank to start from beginning.
+- **End Record** (optional, 1-based): Stop processing at specific record number. Leave blank to process until end.
+- Example: Start=10, End=50 processes only records 10 through 50.
+
+**Use Cases:**
+1. **Resume interrupted processing**: Set mode to "Skip", leave range blank
+2. **Test on sample batch**: Set Start=1, End=10, mode to "Overwrite"
+3. **Process specific range**: Set Start and End to target specific products
+4. **Re-process everything**: Set mode to "Overwrite", leave range blank
 
 ### Cache Files
 
@@ -193,6 +215,65 @@ Collector JSON → Load Products → AI Enhancement → Output Enhanced JSON
 - Good balance of speed and accuracy
 - More cost-effective for large batches
 
+### Batch Mode (50% Cost Savings)
+
+Both providers support **Batch API** processing for significant cost savings:
+
+**Benefits:**
+- **50% lower costs** compared to standard API pricing
+- Same model quality and accuracy
+- Ideal for processing large product catalogs (10+ products)
+- Asynchronous processing with 24-hour completion window
+
+**How It Works:**
+1. All products are submitted as a single batch job
+2. API processes requests asynchronously in the background
+3. Application polls for completion status (default: every 60 seconds)
+4. Results are downloaded and applied when batch completes
+
+**Enabling Batch Mode:**
+
+*GUI Mode:*
+1. Open Settings → API Settings
+2. Enable "Batch Processing (50% Cost Savings)" checkbox
+3. Save settings
+4. Process products normally - batch mode happens automatically
+
+*CLI Mode:*
+```bash
+python3 main.py --input products.json --output enhanced.json --provider openai --batch-mode
+```
+
+**Configuration Options:**
+
+In `config.json`:
+```json
+{
+  "USE_BATCH_MODE": true,              // Enable batch processing
+  "BATCH_COMPLETION_WINDOW": "24h",    // Max time for batch completion
+  "BATCH_POLL_INTERVAL": 60            // Seconds between status checks
+}
+```
+
+**When to Use Batch Mode:**
+- ✅ Processing 10+ products at once
+- ✅ Non-urgent processing (can wait up to 24 hours)
+- ✅ Want to minimize API costs
+- ❌ Need immediate results
+- ❌ Processing only 1-5 products (overhead not worth it)
+
+**Cost Comparison:**
+
+| Provider | Standard API | Batch API | Savings |
+|----------|-------------|-----------|---------|
+| GPT-5 | $1.25/$10 per 1M tokens | $0.625/$5 per 1M tokens | 50% |
+| Claude Sonnet 4.5 | $3/$15 per 1M tokens | $1.50/$7.50 per 1M tokens | 50% |
+
+*Example: Processing 100 products with GPT-5*
+- Standard: ~$2.50
+- Batch: ~$1.25
+- **You save: $1.25**
+
 ### Processing Steps
 
 1. **Taxonomy Assignment + Weight Estimation** (1 API call):
@@ -214,7 +295,7 @@ Collector JSON → Load Products → AI Enhancement → Output Enhanced JSON
 
 ## Taxonomy Structure
 
-**Location**: `/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md`
+**Location**: `../shared-docs/PRODUCT_TAXONOMY.md` (Garoppos shared documentation)
 
 **Three-level hierarchy**:
 1. **Department** (product_type): Top-level category
@@ -234,7 +315,7 @@ Example:
 
 ## Voice and Tone Guidelines
 
-**Location**: `docs/VOICE_AND_TONE_GUIDELINES.md` (project-specific)
+**Location**: `../shared-docs/VOICE_AND_TONE_GUIDELINES.md` (Garoppos shared documentation)
 
 - Second-person voice ("you")
 - Imperative-first phrasing
@@ -284,6 +365,37 @@ open htmlcov/index.html
 - `tests/test_utils.py` - Utility functions (27 tests)
 - `tests/test_config.py` - Configuration management
 - `tests/conftest.py` - Shared pytest fixtures
+
+### Testing Batch Mode
+
+A dedicated test script is provided for batch mode API testing:
+
+```bash
+# Test OpenAI batch mode (GPT-5)
+python3 test_batch_mode.py --provider openai --batch-mode
+
+# Test Claude batch mode (Sonnet 4.5)
+python3 test_batch_mode.py --provider claude --batch-mode
+
+# Test standard mode for comparison
+python3 test_batch_mode.py --provider openai
+
+# Custom number of test products
+python3 test_batch_mode.py --provider openai --batch-mode --products 5
+```
+
+**What the test does:**
+1. Loads sample test products (2 products by default)
+2. Submits them for enhancement using configured provider
+3. Polls for completion (batch mode only)
+4. Displays results and saves to `test_batch_results_[provider].json`
+5. Logs detailed information to `test_batch_mode.log`
+
+**Important Notes:**
+- ⚠️ Test will consume API credits (50% savings in batch mode)
+- Script prompts for confirmation before submitting batch jobs
+- Batch mode tests may take several minutes to complete
+- Ensure API keys are configured in `config.json` or environment variables
 
 ## Entry Points
 

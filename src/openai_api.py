@@ -1488,3 +1488,397 @@ Your task:
 Return ONLY the collection description in plain text format. Do not include any explanations, notes, HTML tags, or markdown formatting. Just the plain text description."""
 
     return prompt
+
+
+# ========== BATCH API FUNCTIONS (50% COST SAVINGS) ==========
+
+def enhance_products_with_openai_batch(
+    products: List[Dict],
+    taxonomy_doc: str,
+    voice_tone_doc: str,
+    shopify_categories: List[Dict],
+    api_key: str,
+    model: str,
+    completion_window: str = "24h",
+    poll_interval: int = 60,
+    status_fn=None,
+    audience_config: Dict = None
+) -> List[Dict]:
+    """
+    Enhance multiple products using OpenAI Batch API for 50% cost savings.
+
+    Batch API provides:
+    - 50% lower costs compared to standard API
+    - Asynchronous processing with 24-hour completion window
+    - Same model quality and capabilities
+
+    Args:
+        products: List of product dictionaries
+        taxonomy_doc: Taxonomy markdown content
+        voice_tone_doc: Voice and tone guidelines markdown
+        shopify_categories: List of Shopify category dicts
+        api_key: OpenAI API key
+        model: OpenAI model ID
+        completion_window: Time window for completion (default: "24h")
+        poll_interval: Seconds between status polls (default: 60)
+        status_fn: Optional status update function
+        audience_config: Optional audience configuration dict
+
+    Returns:
+        List of enhanced product dictionaries
+
+    Raises:
+        Exception: If batch creation or processing fails
+    """
+    if OpenAI is None:
+        error_msg = "openai package not installed. Cannot use batch processing."
+        logging.error(error_msg)
+        raise ImportError(error_msg)
+
+    import time
+    import tempfile
+    from pathlib import Path
+
+    client = OpenAI(api_key=api_key)
+
+    if status_fn:
+        log_and_status(status_fn, f"🔄 Preparing batch processing for {len(products)} products...")
+        log_and_status(status_fn, f"💰 Batch mode enabled: 50% cost savings")
+
+    logging.info("=" * 80)
+    logging.info(f"OPENAI BATCH API PROCESSING - 50% COST SAVINGS")
+    logging.info(f"Total products: {len(products)}")
+    logging.info(f"Model: {model}")
+    logging.info(f"Completion window: {completion_window}")
+    logging.info("=" * 80)
+
+    # Step 1: Create batch requests for taxonomy + weight + purchase options
+    if status_fn:
+        log_and_status(status_fn, f"📝 Creating batch requests...")
+
+    taxonomy_requests = []
+    for i, product in enumerate(products):
+        title = product.get('title', '')
+        body_html = product.get('body_html', '')
+
+        # Get current weight and variant data
+        current_weight = 0
+        variant_data = None
+        if product.get('variants') and len(product['variants']) > 0:
+            first_variant = product['variants'][0]
+            current_weight = first_variant.get('weight', 0)
+            metafields = first_variant.get('metafields', [])
+            for mf in metafields:
+                if mf.get('key') == 'size_info':
+                    variant_data = {'size_info_metafield': mf.get('value', '')}
+                    break
+
+        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
+        taxonomy_prompt = _build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
+
+        api_params = {
+            "model": model,
+            "messages": [{"role": "user", "content": taxonomy_prompt}]
+        }
+
+        if not is_reasoning_model(model):
+            api_params["temperature"] = 0.3
+
+        if uses_max_completion_tokens(model):
+            api_params["max_completion_tokens"] = 1024
+        else:
+            api_params["max_tokens"] = 1024
+
+        taxonomy_requests.append({
+            "custom_id": f"taxonomy-{i}",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": api_params
+        })
+
+    # Step 2: Write batch requests to JSONL file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False, encoding='utf-8') as f:
+        taxonomy_batch_file = f.name
+        for req in taxonomy_requests:
+            f.write(json.dumps(req) + '\n')
+
+    logging.info(f"Created batch input file: {taxonomy_batch_file}")
+    logging.info(f"Total requests: {len(taxonomy_requests)}")
+
+    # Step 3: Upload batch file
+    if status_fn:
+        log_and_status(status_fn, f"☁️  Uploading batch file to OpenAI...")
+
+    try:
+        with open(taxonomy_batch_file, 'rb') as f:
+            batch_input_file = client.files.create(
+                file=Path(taxonomy_batch_file),
+                purpose="batch"
+            )
+
+        logging.info(f"✅ Uploaded batch file: {batch_input_file.id}")
+
+        # Step 4: Create batch job
+        if status_fn:
+            log_and_status(status_fn, f"🚀 Starting batch processing job...")
+
+        batch = client.batches.create(
+            input_file_id=batch_input_file.id,
+            endpoint="/v1/chat/completions",
+            completion_window=completion_window,
+            metadata={"description": "Product taxonomy and weight estimation"}
+        )
+
+        logging.info(f"✅ Created batch job: {batch.id}")
+        logging.info(f"Status: {batch.status}")
+        logging.info(f"Completion window: {completion_window}")
+
+        if status_fn:
+            log_and_status(status_fn, f"⏳ Batch job created: {batch.id}")
+            log_and_status(status_fn, f"Status: {batch.status}")
+            log_and_status(status_fn, f"Processing will complete within {completion_window}")
+
+        # Step 5: Poll for completion
+        if status_fn:
+            log_and_status(status_fn, f"⏰ Waiting for batch to complete (polling every {poll_interval}s)...")
+
+        while batch.status in ["validating", "in_progress", "finalizing"]:
+            time.sleep(poll_interval)
+            batch = client.batches.retrieve(batch.id)
+
+            progress_msg = f"Status: {batch.status}"
+            if batch.request_counts:
+                progress_msg += f" | Completed: {batch.request_counts.completed}/{batch.request_counts.total}"
+                if batch.request_counts.failed > 0:
+                    progress_msg += f" | Failed: {batch.request_counts.failed}"
+
+            logging.info(progress_msg)
+            if status_fn:
+                log_and_status(status_fn, f"⏳ {progress_msg}")
+
+        # Check final status
+        if batch.status != "completed":
+            error_msg = f"Batch job failed with status: {batch.status}"
+            logging.error(error_msg)
+            if batch.errors:
+                for error in batch.errors.data:
+                    logging.error(f"  - {error}")
+            raise Exception(error_msg)
+
+        logging.info(f"✅ Batch job completed successfully!")
+        if status_fn:
+            log_and_status(status_fn, f"✅ Batch processing complete!")
+
+        # Step 6: Download and process results
+        if status_fn:
+            log_and_status(status_fn, f"📥 Downloading batch results...")
+
+        # Get output file
+        output_file_id = batch.output_file_id
+        output_file_response = client.files.content(output_file_id)
+
+        # Parse results
+        results = {}
+        for line in output_file_response.text.strip().split('\n'):
+            result = json.loads(line)
+            custom_id = result['custom_id']
+            results[custom_id] = result
+
+        logging.info(f"✅ Downloaded {len(results)} results")
+
+        # Step 7: Process taxonomy results and create description requests
+        enhanced_products = []
+        description_requests = []
+
+        for i, product in enumerate(products):
+            taxonomy_result_key = f"taxonomy-{i}"
+
+            if taxonomy_result_key not in results:
+                logging.error(f"Missing result for product {i}: {product.get('title', '')}")
+                continue
+
+            taxonomy_response = results[taxonomy_result_key]
+
+            if taxonomy_response['response']['status_code'] != 200:
+                logging.error(f"Taxonomy request failed for product {i}: {taxonomy_response.get('error', 'Unknown error')}")
+                continue
+
+            # Parse taxonomy response
+            taxonomy_text = taxonomy_response['response']['body']['choices'][0]['message']['content']
+
+            # Remove markdown if present
+            if taxonomy_text.startswith("```"):
+                lines = taxonomy_text.split('\n')
+                taxonomy_text = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+
+            try:
+                taxonomy_result = json.loads(taxonomy_text)
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse taxonomy JSON for product {i}: {e}")
+                continue
+
+            # Extract taxonomy data
+            department = taxonomy_result.get('department', '')
+            category = taxonomy_result.get('category', '')
+            subcategory = taxonomy_result.get('subcategory', '')
+            weight_estimation = taxonomy_result.get('weight_estimation', {})
+            purchase_options = taxonomy_result.get('purchase_options', [])
+            lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
+
+            # Validate taxonomy
+            from .utils import validate_taxonomy_assignment
+            is_valid, error_msg, suggestions = validate_taxonomy_assignment(
+                department,
+                category,
+                subcategory,
+                taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
+            )
+
+            if not is_valid:
+                logging.error(f"Taxonomy validation failed for product {i}: {error_msg}")
+                continue
+
+            # Create enhanced product with taxonomy
+            enhanced_product = product.copy()
+            enhanced_product['product_type'] = department
+
+            tags = [category]
+            if subcategory:
+                tags.append(subcategory)
+            enhanced_product['tags'] = tags
+
+            # Add weight estimation
+            final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
+            final_shipping_weight_grams = int(final_shipping_weight * 453.592)
+
+            if 'variants' in enhanced_product and enhanced_product['variants']:
+                for variant in enhanced_product['variants']:
+                    variant['weight_data'] = weight_estimation
+                    variant['weight'] = final_shipping_weight
+                    variant['grams'] = final_shipping_weight_grams
+
+            # Add purchase options metafield
+            if 'metafields' not in enhanced_product:
+                enhanced_product['metafields'] = []
+
+            enhanced_product['metafields'].append({
+                'namespace': 'custom',
+                'key': 'purchase_options',
+                'value': json.dumps(purchase_options),
+                'type': 'json'
+            })
+
+            # Add lifestyle image prompts
+            if lifestyle_images_prompt:
+                enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
+
+            enhanced_products.append(enhanced_product)
+
+            # Create description request
+            title = product.get('title', '')
+            body_html = product.get('body_html', '')
+
+            description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc, None)
+
+            api_params = {
+                "model": model,
+                "messages": [{"role": "user", "content": description_prompt}]
+            }
+
+            if not is_reasoning_model(model):
+                api_params["temperature"] = 0.7
+
+            if uses_max_completion_tokens(model):
+                api_params["max_completion_tokens"] = 2048
+            else:
+                api_params["max_tokens"] = 2048
+
+            description_requests.append({
+                "custom_id": f"description-{i}",
+                "method": "POST",
+                "url": "/v1/chat/completions",
+                "body": api_params
+            })
+
+        # Step 8: Process descriptions in batch
+        if status_fn:
+            log_and_status(status_fn, f"📝 Creating description batch...")
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.jsonl', delete=False, encoding='utf-8') as f:
+            description_batch_file = f.name
+            for req in description_requests:
+                f.write(json.dumps(req) + '\n')
+
+        with open(description_batch_file, 'rb') as f:
+            desc_input_file = client.files.create(
+                file=Path(description_batch_file),
+                purpose="batch"
+            )
+
+        desc_batch = client.batches.create(
+            input_file_id=desc_input_file.id,
+            endpoint="/v1/chat/completions",
+            completion_window=completion_window,
+            metadata={"description": "Product description rewriting"}
+        )
+
+        logging.info(f"✅ Created description batch: {desc_batch.id}")
+
+        if status_fn:
+            log_and_status(status_fn, f"⏳ Processing descriptions...")
+
+        # Poll for description batch completion
+        while desc_batch.status in ["validating", "in_progress", "finalizing"]:
+            time.sleep(poll_interval)
+            desc_batch = client.batches.retrieve(desc_batch.id)
+
+            progress_msg = f"Descriptions: {desc_batch.status}"
+            if desc_batch.request_counts:
+                progress_msg += f" | {desc_batch.request_counts.completed}/{desc_batch.request_counts.total}"
+
+            logging.info(progress_msg)
+            if status_fn:
+                log_and_status(status_fn, f"⏳ {progress_msg}")
+
+        if desc_batch.status != "completed":
+            error_msg = f"Description batch failed: {desc_batch.status}"
+            logging.error(error_msg)
+            raise Exception(error_msg)
+
+        # Download description results
+        desc_output = client.files.content(desc_batch.output_file_id)
+        desc_results = {}
+        for line in desc_output.text.strip().split('\n'):
+            result = json.loads(line)
+            desc_results[result['custom_id']] = result
+
+        # Apply descriptions to products
+        for i, enhanced_product in enumerate(enhanced_products):
+            desc_key = f"description-{i}"
+            if desc_key in desc_results:
+                desc_response = desc_results[desc_key]
+                if desc_response['response']['status_code'] == 200:
+                    description = desc_response['response']['body']['choices'][0]['message']['content']
+
+                    if description.startswith("```"):
+                        lines = description.split('\n')
+                        description = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+
+                    enhanced_product['body_html'] = description
+
+        logging.info(f"✅ Batch processing complete: {len(enhanced_products)} products enhanced")
+        if status_fn:
+            log_and_status(status_fn, f"✅ Successfully enhanced {len(enhanced_products)} products using batch API")
+            log_and_status(status_fn, f"💰 Cost savings: 50% compared to standard API")
+
+        return enhanced_products
+
+    finally:
+        # Cleanup temp files
+        import os
+        try:
+            os.unlink(taxonomy_batch_file)
+            if 'description_batch_file' in locals():
+                os.unlink(description_batch_file)
+        except:
+            pass

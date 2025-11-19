@@ -817,6 +817,270 @@ def generate_collection_description(
         raise Exception(f"{error_msg}: {str(e)}") from e
 
 
+# ========== BATCH API FUNCTIONS (50% COST SAVINGS) ==========
+
+def enhance_products_with_claude_batch(
+    products: List[Dict],
+    taxonomy_doc: str,
+    voice_tone_doc: str,
+    api_key: str,
+    model: str,
+    poll_interval: int = 60,
+    status_fn=None,
+    audience_config: Dict = None
+) -> List[Dict]:
+    """
+    Enhance multiple products using Anthropic Message Batches API for 50% cost savings.
+
+    Message Batches API provides:
+    - 50% lower costs compared to standard API
+    - Asynchronous processing with 24-hour completion window
+    - Same model quality and capabilities
+
+    Args:
+        products: List of product dictionaries
+        taxonomy_doc: Taxonomy markdown content
+        voice_tone_doc: Voice and tone guidelines markdown
+        api_key: Claude API key
+        model: Claude model ID
+        poll_interval: Seconds between status polls (default: 60)
+        status_fn: Optional status update function
+        audience_config: Optional audience configuration dict
+
+    Returns:
+        List of enhanced product dictionaries
+
+    Raises:
+        Exception: If batch creation or processing fails
+    """
+    if anthropic is None:
+        error_msg = "anthropic package not installed. Cannot use batch processing."
+        logging.error(error_msg)
+        raise ImportError(error_msg)
+
+    import time
+
+    client = anthropic.Anthropic(api_key=api_key)
+
+    if status_fn:
+        log_and_status(status_fn, f"🔄 Preparing batch processing for {len(products)} products...")
+        log_and_status(status_fn, f"💰 Batch mode enabled: 50% cost savings")
+
+    logging.info("=" * 80)
+    logging.info(f"ANTHROPIC MESSAGE BATCHES API PROCESSING - 50% COST SAVINGS")
+    logging.info(f"Total products: {len(products)}")
+    logging.info(f"Model: {model}")
+    logging.info("=" * 80)
+
+    # Step 1: Create batch requests for taxonomy
+    if status_fn:
+        log_and_status(status_fn, f"📝 Creating batch requests...")
+
+    taxonomy_batch_requests = []
+    for i, product in enumerate(products):
+        title = product.get('title', '')
+        body_html = product.get('body_html', '')
+
+        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
+        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, variants_needing_images)
+
+        taxonomy_batch_requests.append({
+            "custom_id": f"taxonomy-{i}",
+            "params": {
+                "model": model,
+                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": taxonomy_prompt}]
+            }
+        })
+
+    logging.info(f"Created {len(taxonomy_batch_requests)} taxonomy requests")
+
+    # Step 2: Create taxonomy batch
+    if status_fn:
+        log_and_status(status_fn, f"🚀 Starting taxonomy batch processing...")
+
+    try:
+        taxonomy_batch = client.beta.messages.batches.create(
+            requests=taxonomy_batch_requests
+        )
+
+        logging.info(f"✅ Created taxonomy batch: {taxonomy_batch.id}")
+        logging.info(f"Status: {taxonomy_batch.processing_status}")
+
+        if status_fn:
+            log_and_status(status_fn, f"⏳ Batch job created: {taxonomy_batch.id}")
+            log_and_status(status_fn, f"Status: {taxonomy_batch.processing_status}")
+
+        # Step 3: Poll for completion
+        if status_fn:
+            log_and_status(status_fn, f"⏰ Waiting for batch to complete (polling every {poll_interval}s)...")
+
+        while taxonomy_batch.processing_status in ["in_progress"]:
+            time.sleep(poll_interval)
+            taxonomy_batch = client.beta.messages.batches.retrieve(taxonomy_batch.id)
+
+            progress_msg = f"Status: {taxonomy_batch.processing_status}"
+            if taxonomy_batch.request_counts:
+                progress_msg += f" | Completed: {taxonomy_batch.request_counts.succeeded}/{len(taxonomy_batch_requests)}"
+                if taxonomy_batch.request_counts.errored > 0:
+                    progress_msg += f" | Errors: {taxonomy_batch.request_counts.errored}"
+
+            logging.info(progress_msg)
+            if status_fn:
+                log_and_status(status_fn, f"⏳ {progress_msg}")
+
+        # Check final status
+        if taxonomy_batch.processing_status not in ["ended"]:
+            error_msg = f"Batch job failed with status: {taxonomy_batch.processing_status}"
+            logging.error(error_msg)
+            raise Exception(error_msg)
+
+        logging.info(f"✅ Taxonomy batch completed!")
+        if status_fn:
+            log_and_status(status_fn, f"✅ Taxonomy batch complete!")
+
+        # Step 4: Retrieve results
+        if status_fn:
+            log_and_status(status_fn, f"📥 Downloading batch results...")
+
+        taxonomy_results = {}
+        for result in client.beta.messages.batches.results(taxonomy_batch.id):
+            taxonomy_results[result.custom_id] = result
+
+        logging.info(f"✅ Downloaded {len(taxonomy_results)} results")
+
+        # Step 5: Process taxonomy results and create description batch
+        enhanced_products = []
+        description_batch_requests = []
+
+        for i, product in enumerate(products):
+            taxonomy_result_key = f"taxonomy-{i}"
+
+            if taxonomy_result_key not in taxonomy_results:
+                logging.error(f"Missing result for product {i}: {product.get('title', '')}")
+                continue
+
+            result_wrapper = taxonomy_results[taxonomy_result_key]
+
+            if result_wrapper.result.type != "succeeded":
+                logging.error(f"Taxonomy request failed for product {i}: {result_wrapper.result.type}")
+                continue
+
+            # Parse taxonomy response
+            taxonomy_message = result_wrapper.result.message
+            taxonomy_text = taxonomy_message.content[0].text.strip()
+
+            # Remove markdown if present
+            if taxonomy_text.startswith("```"):
+                lines = taxonomy_text.split('\n')
+                taxonomy_text = '\n'.join(lines[1:-1])
+
+            try:
+                taxonomy_result = json.loads(taxonomy_text)
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse taxonomy JSON for product {i}: {e}")
+                continue
+
+            # Extract taxonomy data
+            department = taxonomy_result.get('department', '')
+            category = taxonomy_result.get('category', '')
+            subcategory = taxonomy_result.get('subcategory', '')
+            lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
+
+            # Create enhanced product with taxonomy
+            enhanced_product = product.copy()
+            enhanced_product['product_type'] = department
+
+            tags = [category]
+            if subcategory:
+                tags.append(subcategory)
+            enhanced_product['tags'] = tags
+
+            # Add lifestyle image prompts
+            if lifestyle_images_prompt:
+                enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
+
+            enhanced_products.append(enhanced_product)
+
+            # Create description request
+            title = product.get('title', '')
+            body_html = product.get('body_html', '')
+
+            description_prompt = build_description_prompt(title, body_html, department, voice_tone_doc, None)
+
+            description_batch_requests.append({
+                "custom_id": f"description-{i}",
+                "params": {
+                    "model": model,
+                    "max_tokens": 2048,
+                    "messages": [{"role": "user", "content": description_prompt}]
+                }
+            })
+
+        # Step 6: Create description batch
+        if status_fn:
+            log_and_status(status_fn, f"📝 Creating description batch...")
+
+        description_batch = client.beta.messages.batches.create(
+            requests=description_batch_requests
+        )
+
+        logging.info(f"✅ Created description batch: {description_batch.id}")
+
+        if status_fn:
+            log_and_status(status_fn, f"⏳ Processing descriptions...")
+
+        # Poll for description batch completion
+        while description_batch.processing_status in ["in_progress"]:
+            time.sleep(poll_interval)
+            description_batch = client.beta.messages.batches.retrieve(description_batch.id)
+
+            progress_msg = f"Descriptions: {description_batch.processing_status}"
+            if description_batch.request_counts:
+                progress_msg += f" | {description_batch.request_counts.succeeded}/{len(description_batch_requests)}"
+
+            logging.info(progress_msg)
+            if status_fn:
+                log_and_status(status_fn, f"⏳ {progress_msg}")
+
+        if description_batch.processing_status not in ["ended"]:
+            error_msg = f"Description batch failed: {description_batch.processing_status}"
+            logging.error(error_msg)
+            raise Exception(error_msg)
+
+        # Retrieve description results
+        description_results = {}
+        for result in client.beta.messages.batches.results(description_batch.id):
+            description_results[result.custom_id] = result
+
+        # Apply descriptions to products
+        for i, enhanced_product in enumerate(enhanced_products):
+            desc_key = f"description-{i}"
+            if desc_key in description_results:
+                desc_result = description_results[desc_key]
+                if desc_result.result.type == "succeeded":
+                    description = desc_result.result.message.content[0].text.strip()
+
+                    if description.startswith("```"):
+                        lines = description.split('\n')
+                        description = '\n'.join(lines[1:-1])
+
+                    enhanced_product['body_html'] = description
+
+        logging.info(f"✅ Batch processing complete: {len(enhanced_products)} products enhanced")
+        if status_fn:
+            log_and_status(status_fn, f"✅ Successfully enhanced {len(enhanced_products)} products using batch API")
+            log_and_status(status_fn, f"💰 Cost savings: 50% compared to standard API")
+
+        return enhanced_products
+
+    except Exception as e:
+        error_msg = f"Batch processing failed"
+        logging.error(f"❌ {error_msg}: {str(e)}")
+        logging.exception("Full traceback:")
+        raise Exception(f"{error_msg}: {str(e)}") from e
+
+
 def batch_enhance_products(
     products: List[Dict],
     cfg: Dict,
