@@ -176,11 +176,14 @@ def open_api_settings(cfg, parent):
     ToolTip(
         batch_mode_check,
         text="Enable batch processing for 50% cost savings\n"
-             "• Processes all products asynchronously\n"
              "• 50% cheaper than standard API\n"
-             "• Completion within 24 hours\n"
              "• Same model quality and accuracy\n"
-             "• Best for large batches (10+ products)"
+             "• Best for large batches (10+ products)\n"
+             "\n"
+             "⚠️ Processing happens on API provider's schedule\n"
+             "• Jobs submitted immediately, processed asynchronously\n"
+             "• Completes within 24 hours (often faster)\n"
+             "• Not suitable for urgent/immediate results"
     )
 
     # Info label about AI
