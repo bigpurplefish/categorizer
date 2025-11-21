@@ -553,7 +553,7 @@ def enhance_product_with_claude(
         logging.info("Sending taxonomy assignment request to Claude API...")
         taxonomy_response = client.messages.create(
             model=model,
-            max_tokens=1024,
+            max_tokens=16000,
             messages=[{
                 "role": "user",
                 "content": taxonomy_prompt
@@ -1174,7 +1174,7 @@ def enhance_products_with_claude_batch(
             "custom_id": f"taxonomy-{i}",
             "params": {
                 "model": model,
-                "max_tokens": 1024,
+                "max_tokens": 16000,
                 "messages": [{"role": "user", "content": taxonomy_prompt}]
             }
         })

@@ -381,11 +381,11 @@ def enhance_product_with_openai(
 
         # Use correct token limit parameter based on model
         if uses_max_completion_tokens(model):
-            api_params["max_completion_tokens"] = 1024
-            logging.debug(f"Using max_completion_tokens=1024 for model {model}")
+            api_params["max_completion_tokens"] = 16000
+            logging.debug(f"Using max_completion_tokens=16000 for model {model}")
         else:
-            api_params["max_tokens"] = 1024
-            logging.debug(f"Using max_tokens=1024 for model {model}")
+            api_params["max_tokens"] = 16000
+            logging.debug(f"Using max_tokens=16000 for model {model}")
 
         taxonomy_response = client.chat.completions.create(**api_params)
 
@@ -1674,9 +1674,9 @@ def enhance_products_with_openai_batch(
             api_params["temperature"] = 0.3
 
         if uses_max_completion_tokens(model):
-            api_params["max_completion_tokens"] = 1024
+            api_params["max_completion_tokens"] = 16000
         else:
-            api_params["max_tokens"] = 1024
+            api_params["max_tokens"] = 16000
 
         taxonomy_requests.append({
             "custom_id": f"taxonomy-{i}",
