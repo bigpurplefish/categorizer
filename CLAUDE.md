@@ -134,7 +134,7 @@ categorizer/
 │   ├── claude_api.py       # Claude (Anthropic) implementation
 │   ├── openai_api.py       # OpenAI implementation
 │   ├── taxonomy_search.py  # Shopify taxonomy search and matching
-│   ├── utils.py            # Utility functions (image counting, prompt generation)
+│   ├── utils.py            # Utility functions (currently minimal - image functions moved to upscaler)
 │   └── config.py           # Configuration management
 ├── tests/                  # Comprehensive test suite
 ├── docs/                   # Project-specific documentation
@@ -148,7 +148,7 @@ categorizer/
 - **`src/claude_api.py`**: Claude (Anthropic) implementation
 - **`src/openai_api.py`**: OpenAI implementation
 - **`src/taxonomy_search.py`**: Shopify taxonomy search and matching
-- **`src/utils.py`**: Utility functions (image counting, lifestyle prompts)
+- **`src/utils.py`**: Utility functions (currently minimal - image generation moved to upscaler project)
 - **`src/config.py`**: Configuration management and logging
 
 ### Data Flow
