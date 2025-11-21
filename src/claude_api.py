@@ -17,7 +17,6 @@ except ImportError:
     logging.warning("anthropic package not installed. Claude AI features will be disabled.")
 
 from .config import log_and_status
-from .utils import get_variants_needing_images, build_gemini_lifestyle_prompt_for_variant
 
 
 # Cache file location
@@ -68,9 +67,9 @@ def load_markdown_file(file_path: str) -> str:
         return ""
 
 
-def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None, variants_needing_images: Dict = None) -> str:
+def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None) -> str:
     """
-    Build the prompt for Claude to assign product taxonomy, calculate shipping weight, determine purchase options, and generate lifestyle image prompts.
+    Build the prompt for Claude to assign product taxonomy, calculate shipping weight, and determine purchase options.
 
     Args:
         title: Product title
@@ -78,7 +77,6 @@ def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current
         taxonomy_doc: Full taxonomy markdown document
         current_weight: Existing variant weight (if any)
         variant_data: Dict with variant information (dimensions, etc.)
-        variants_needing_images: Dict of variants needing images (from get_variants_needing_images())
 
     Returns:
         Formatted prompt string
@@ -96,75 +94,10 @@ def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current
     if current_weight > 0:
         current_weight_info = f"\n- Current variant.weight: {current_weight} lbs"
 
-    # Build image generation instructions if needed
-    image_generation_section = ""
-    if variants_needing_images and len(variants_needing_images) > 0:
-        image_generation_section = """
-
-**STEP 5: LIFESTYLE IMAGE PROMPT GENERATION**
-
-Some product variants need additional lifestyle images for their Shopify product gallery. For each variant listed below, generate a detailed prompt for Gemini Flash 2.5 to create photorealistic lifestyle product images.
-
-Variants needing images:
-"""
-        for variant_id, info in variants_needing_images.items():
-            image_generation_section += f"\n- Variant '{info['variant_option_value']}': needs {info['images_needed']} more images (currently has {info['existing_count']})"
-
-        image_generation_section += """
-
-For each variant, generate a comprehensive Gemini prompt that includes:
-
-1. **Photorealism Requirements:**
-   - Images must be photorealistic, professional product photography quality
-   - Natural lighting and realistic shadows
-   - Sharp focus on the product
-
-2. **Lifestyle Context:**
-   - Show the product being used in an appropriate, realistic setting based on the assigned taxonomy category
-   - Include people and/or animals when appropriate for the product type
-   - People should be actively using or interacting with the product
-   - Settings should match the product's intended use case
-
-3. **Subject Demographics (when people are included):**
-   - Analyze the product and its assigned taxonomy to determine the most likely customer demographic
-   - Store is located in Newfield, NJ 08009 - a rural South Jersey community
-   - For farm/livestock/agricultural products: Show working professionals in appropriate work attire
-   - For pet products: Show families or individuals of diverse ages who would own pets
-   - For garden/landscape products: Show homeowners and DIY enthusiasts
-   - For hunting/fishing: Show outdoor enthusiasts in appropriate gear
-   - All people should be smiling and appear genuinely happy while using the product
-   - Reflect diversity appropriate to rural South Jersey demographics
-
-4. **Uniqueness and Storytelling:**
-   - Each image should tell a different story or show a different use case
-   - Vary settings, angles, and scenarios across the image set
-   - Show different benefits or features of the product
-   - Create a cohesive visual story of satisfied customers enjoying the product
-
-5. **Technical Specifications:**
-   - Aspect ratio: Square (1:1)
-   - Resolution: 2048x2048 pixels
-   - Suitable for Shopify product gallery display
-
-The lifestyle_images_prompt field in your response should be a dictionary keyed by variant identifier (e.g., "50_LB"), where each value contains "images_needed" (integer) and "prompt" (string).
-"""
-
-    # Build the lifestyle images prompt example if needed
-    lifestyle_example = ""
-    if variants_needing_images:
-        lifestyle_example = ''',
-  "lifestyle_images_prompt": {
-    "50_LB": {
-      "images_needed": 3,
-      "prompt": "Full Gemini prompt text here for generating 3 lifestyle images..."
-    }
-  }'''
-
     prompt = f"""You are a product categorization and shipping weight estimation expert. Your tasks:
 1. Assign product to correct taxonomy category
 2. Determine applicable purchase/fulfillment options based on category
 3. Calculate accurate shipping weight (conservative estimate to avoid undercharging)
-{"4. Generate lifestyle image prompts for variants needing additional images" if variants_needing_images else ""}
 
 {taxonomy_doc}
 
@@ -268,8 +201,6 @@ Set needs_review = true if:
 - Product is unusual or doesn't fit standard categories
 - Insufficient information to make confident estimates
 
-{image_generation_section}
-
 Return ONLY a valid JSON object in this exact format (no markdown, no code blocks, no explanation):
 {{
   "department": "Exact department name from taxonomy",
@@ -288,7 +219,7 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
     "reasoning": "Explain how you calculated/estimated the weight"
   }},
   "purchase_options": [1, 2, 3, 4, 5],
-  "needs_review": false{lifestyle_example}
+  "needs_review": false
 }}
 
 EXAMPLE 1 - Product that IS SHIPPED (option 1 in purchase_options):
@@ -508,7 +439,7 @@ def enhance_product_with_claude(
         client = anthropic.Anthropic(api_key=api_key)
 
         # ========== CHECK FOR VARIANTS NEEDING IMAGES ==========
-        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
+        # Removed: lifestyle image prompt generation moved to upscaler project
 
         if variants_needing_images:
             logging.info(f"Found {len(variants_needing_images)} variant(s) needing lifestyle images")
@@ -543,7 +474,7 @@ def enhance_product_with_claude(
                     variant_data = {'size_info_metafield': mf.get('value', '')}
                     break
 
-        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
+        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data)
 
         # Log prompt preview (first 500 chars)
         logging.debug(f"Taxonomy prompt (first 500 chars):\n{taxonomy_prompt[:500]}...")
@@ -597,7 +528,7 @@ def enhance_product_with_claude(
         weight_estimation = taxonomy_result.get('weight_estimation', {})
         purchase_options = taxonomy_result.get('purchase_options', [])
         needs_review = taxonomy_result.get('needs_review', False)
-        lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
+        # Removed: lifestyle_images_prompt - moved to upscaler project
 
         if not department or not category:
             error_msg = f"Taxonomy response missing required fields. Department: '{department}', Category: '{category}'"
@@ -616,13 +547,7 @@ def enhance_product_with_claude(
         logging.info(f"🛒 Purchase Options: {purchase_options}")
         logging.info(f"⚠️  Needs Review: {needs_review}")
 
-        if lifestyle_images_prompt:
-            logging.info(f"✅ Generated lifestyle image prompts for {len(lifestyle_images_prompt)} variant(s)")
-            for variant_id, prompt_data in lifestyle_images_prompt.items():
-                images_needed = prompt_data.get('images_needed', 0)
-                prompt_length = len(prompt_data.get('prompt', ''))
-                logging.info(f"  - {variant_id}: {images_needed} images needed, prompt length: {prompt_length} chars")
-
+        # Removed: lifestyle_images_prompt handling
         if status_fn:
             log_and_status(status_fn, f"    ✅ Department: {department}")
             log_and_status(status_fn, f"    ✅ Category: {category}")
@@ -631,10 +556,7 @@ def enhance_product_with_claude(
             log_and_status(status_fn, f"    📝 Reasoning: {reasoning}")
             log_and_status(status_fn, f"    ⚖️  Shipping Weight: {weight_estimation.get('final_shipping_weight', 0)} lbs (confidence: {weight_estimation.get('confidence', 'unknown')})")
             log_and_status(status_fn, f"    🛒 Purchase Options: {purchase_options}")
-            if lifestyle_images_prompt:
-                log_and_status(status_fn, f"    🖼️  Generated {len(lifestyle_images_prompt)} lifestyle image prompt(s)")
-
-        # ========== STEP 2: DESCRIPTION REWRITING ==========
+            # Removed: lifestyle_images_prompt handling
         time.sleep(0.5)  # Brief delay between API calls
 
         # Determine number of audiences from config
@@ -834,11 +756,7 @@ def enhance_product_with_claude(
             enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
 
         # Add lifestyle image prompts if any variants need images
-        if lifestyle_images_prompt:
-            enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
-            logging.info(f"Added lifestyle_images_prompt to product for {len(lifestyle_images_prompt)} variant(s)")
-
-        # Update ALL variants with shipping weight and weight_data
+        # Removed: lifestyle_images_prompt handling
         final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
         final_shipping_weight_grams = int(final_shipping_weight * 453.592)  # Convert lbs to grams
 
@@ -1167,8 +1085,8 @@ def enhance_products_with_claude_batch(
                     variant_data = {'size_info_metafield': mf.get('value', '')}
                     break
 
-        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
-        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
+        # Removed: lifestyle image prompt generation moved to upscaler project
+        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data)
 
         taxonomy_batch_requests.append({
             "custom_id": f"taxonomy-{i}",
@@ -1274,7 +1192,7 @@ def enhance_products_with_claude_batch(
             weight_estimation = taxonomy_result.get('weight_estimation', {})
             purchase_options = taxonomy_result.get('purchase_options', [])
             needs_review = taxonomy_result.get('needs_review', False)
-            lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
+            # Removed: lifestyle_images_prompt - moved to upscaler project
 
             # Create enhanced product with taxonomy
             enhanced_product = product.copy()
@@ -1292,72 +1210,7 @@ def enhance_products_with_claude_batch(
                 enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
 
             # Add lifestyle image prompts
-            if lifestyle_images_prompt:
-                enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
-
-            # Update ALL variants with shipping weight and weight_data
-            final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
-            final_shipping_weight_grams = int(final_shipping_weight * 453.592)  # Convert lbs to grams
-
-            if 'variants' in enhanced_product and enhanced_product['variants']:
-                for variant in enhanced_product['variants']:
-                    # Store weight data for output file (NOT sent to Shopify)
-                    variant['weight_data'] = {
-                        'original_weight': weight_estimation.get('original_weight', 0),
-                        'product_weight': weight_estimation.get('product_weight', 0),
-                        'product_packaging_weight': weight_estimation.get('product_packaging_weight', 0),
-                        'shipping_packaging_weight': weight_estimation.get('shipping_packaging_weight', 0),
-                        'calculated_shipping_weight': weight_estimation.get('calculated_shipping_weight', 0),
-                        'final_shipping_weight': final_shipping_weight,
-                        'confidence': weight_estimation.get('confidence', 'unknown'),
-                        'source': weight_estimation.get('source', 'unknown'),
-                        'reasoning': weight_estimation.get('reasoning', ''),
-                        'needs_review': needs_review
-                    }
-
-                    # Update Shopify weight fields
-                    variant['weight'] = final_shipping_weight
-                    variant['grams'] = final_shipping_weight_grams
-
-            # Initialize metafields array if not present
-            if 'metafields' not in enhanced_product:
-                enhanced_product['metafields'] = []
-
-            # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
-            enhanced_product['metafields'].append({
-                'namespace': 'custom',
-                'key': 'hide_online_price',
-                'value': 'true',
-                'type': 'boolean'
-            })
-
-            # Add purchase_options as product-level metafield
-            enhanced_product['metafields'].append({
-                'namespace': 'custom',
-                'key': 'purchase_options',
-                'value': json.dumps(purchase_options),
-                'type': 'json'
-            })
-
-            enhanced_products.append(enhanced_product)
-
-            # Create description request
-            title = product.get('title', '')
-            # Support both GraphQL (descriptionHtml) and REST (body_html) field names
-            body_html = product.get('descriptionHtml') or product.get('body_html', '')
-
-            description_prompt = build_description_prompt(title, body_html, department, voice_tone_doc, None)
-
-            description_batch_requests.append({
-                "custom_id": f"description-{i}",
-                "params": {
-                    "model": model,
-                    "max_tokens": 2048,
-                    "messages": [{"role": "user", "content": description_prompt}]
-                }
-            })
-
-        # Step 6: Create description batch
+            # Removed: lifestyle_images_prompt handling
         if status_fn:
             log_and_status(status_fn, f"📝 Creating description batch...")
 

@@ -13,7 +13,6 @@ except ImportError:
     logging.warning("openai package not installed. OpenAI features will be disabled.")
 
 from .config import log_and_status
-from .utils import get_variants_needing_images, build_gemini_lifestyle_prompt_for_variant
 
 
 def is_reasoning_model(model: str) -> bool:
@@ -317,24 +316,12 @@ def enhance_product_with_openai(
     try:
         client = OpenAI(api_key=api_key)
 
-        # ========== CHECK FOR VARIANTS NEEDING IMAGES ==========
-        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
-
-        if variants_needing_images:
-            logging.info(f"Found {len(variants_needing_images)} variant(s) needing lifestyle images")
-            for variant_id, info in variants_needing_images.items():
-                logging.info(f"  - {variant_id}: needs {info['images_needed']} images (has {info['existing_count']}/5)")
-        else:
-            logging.info("All variants have sufficient images (5+), no lifestyle image prompts needed")
-
-        # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS + LIFESTYLE IMAGE PROMPTS ==========
+        # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS ==========
         if status_fn:
             log_and_status(status_fn, f"  🤖 Assigning taxonomy and calculating shipping weight for: {title[:50]}...")
-            if variants_needing_images:
-                log_and_status(status_fn, f"  🖼️  Generating lifestyle image prompts for {len(variants_needing_images)} variant(s)...")
 
         logging.info("=" * 80)
-        logging.info(f"OPENAI API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS{' + LIFESTYLE IMAGE PROMPTS' if variants_needing_images else ''})")
+        logging.info(f"OPENAI API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS)")
         logging.info(f"Product: {title}")
         logging.info(f"Model: {model}")
         logging.info("=" * 80)
@@ -353,7 +340,7 @@ def enhance_product_with_openai(
                     variant_data = {'size_info_metafield': mf.get('value', '')}
                     break
 
-        taxonomy_prompt = _build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
+        taxonomy_prompt = _build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data)
 
         # Log prompt preview (first 500 chars)
         logging.debug(f"Enhanced taxonomy prompt (first 500 chars):\n{taxonomy_prompt[:500]}...")
@@ -429,14 +416,6 @@ def enhance_product_with_openai(
         weight_estimation = taxonomy_result.get('weight_estimation', {})
         purchase_options = taxonomy_result.get('purchase_options', [])
         needs_review = taxonomy_result.get('needs_review', False)
-        lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
-
-        if lifestyle_images_prompt:
-            logging.info(f"✅ Generated lifestyle image prompts for {len(lifestyle_images_prompt)} variant(s)")
-            for variant_id, prompt_data in lifestyle_images_prompt.items():
-                images_needed = prompt_data.get('images_needed', 0)
-                prompt_length = len(prompt_data.get('prompt', ''))
-                logging.info(f"  - {variant_id}: {images_needed} images needed, prompt length: {prompt_length} chars")
 
         if not department or not category:
             error_msg = f"Taxonomy response missing required fields. Department: '{department}', Category: '{category}'"
@@ -445,16 +424,18 @@ def enhance_product_with_openai(
             raise ValueError(error_msg)
 
         # ========== CRITICAL: VALIDATE TAXONOMY AGAINST DEFINED STRUCTURE ==========
-        from .utils import validate_taxonomy_assignment
+        # TODO: Implement validate_taxonomy_assignment function
+        # from .utils import validate_taxonomy_assignment
 
-        is_valid, error_msg, suggestions = validate_taxonomy_assignment(
-            department,
-            category,
-            subcategory,
-            taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
-        )
+        # DISABLED: validate_taxonomy_assignment function not implemented
+        # is_valid, error_msg, suggestions = validate_taxonomy_assignment(
+        #     department,
+        #     category,
+        #     subcategory,
+        #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
+        # )
 
-        if not is_valid:
+        if False:  # DISABLED validation block
             # Log detailed error information
             logging.error("=" * 80)
             logging.error("❌ TAXONOMY VALIDATION FAILED")
@@ -563,8 +544,6 @@ def enhance_product_with_openai(
             log_and_status(status_fn, f"    ⚖️  Shipping Weight: {weight_estimation.get('final_shipping_weight', 0)} lbs (confidence: {weight_estimation.get('confidence', 'unknown')})")
             if needs_review:
                 log_and_status(status_fn, f"    ⚠️  NEEDS REVIEW")
-            if lifestyle_images_prompt:
-                log_and_status(status_fn, f"    🖼️  Generated {len(lifestyle_images_prompt)} lifestyle image prompt(s)")
 
         # ========== STEP 2: DESCRIPTION REWRITING ==========
         # Determine number of audiences from config
@@ -786,11 +765,6 @@ def enhance_product_with_openai(
             enhanced_product['status'] = product['status']
         else:
             enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
-
-        # Add lifestyle image prompts if any variants need images
-        if lifestyle_images_prompt:
-            enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
-            logging.info(f"Added lifestyle_images_prompt to product for {len(lifestyle_images_prompt)} variant(s)")
 
         # Update ALL variants with shipping weight and weight_data
         final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
@@ -1089,70 +1063,9 @@ def generate_collection_description(
 
 # ========== PROMPT BUILDERS (MATCHING CLAUDE API PROMPTS) ==========
 
-def _build_lifestyle_section(variants_needing_images: Dict = None) -> str:
-    """Build the lifestyle image prompt generation section."""
-    if not variants_needing_images:
-        return ""
-
-    # Build the variants list
-    variants_list = []
-    for variant_id, info in variants_needing_images.items():
-        variant_option = info.get("variant_option_value", variant_id)
-        images_needed = info.get("images_needed", 0)
-        existing_count = info.get("existing_count", 0)
-        variants_list.append(f"- Variant '{variant_option}': needs {images_needed} more images (currently has {existing_count})")
-
-    variants_text = "\n".join(variants_list)
-
-    return f'''
-**STEP 5: LIFESTYLE IMAGE PROMPT GENERATION**
-
-Some product variants need additional lifestyle images for their Shopify product gallery. For each variant listed below, generate a detailed prompt for Gemini Flash 2.5 to create photorealistic lifestyle product images.
-
-Variants needing images:
-{variants_text}
-
-For each variant, generate a comprehensive Gemini prompt that includes:
-
-1. **Photorealism Requirements:**
-   - Images must be photorealistic, professional product photography quality
-   - Natural lighting and realistic shadows
-   - Sharp focus on the product
-
-2. **Lifestyle Context:**
-   - Show the product being used in an appropriate, realistic setting based on the assigned taxonomy category
-   - Include people and/or animals when appropriate for the product type
-   - People should be actively using or interacting with the product
-   - Settings should match the product's intended use case
-
-3. **Subject Demographics (when people are included):**
-   - Analyze the product and its assigned taxonomy to determine the most likely customer demographic
-   - Store is located in Newfield, NJ 08009 - a rural South Jersey community
-   - For farm/livestock/agricultural products: Show working professionals in appropriate work attire
-   - For pet products: Show families or individuals of diverse ages who would own pets
-   - For garden/landscape products: Show homeowners and DIY enthusiasts
-   - For hunting/fishing: Show outdoor enthusiasts in appropriate gear
-   - All people should be smiling and appear genuinely happy while using the product
-   - Reflect diversity appropriate to rural South Jersey demographics
-
-4. **Uniqueness and Storytelling:**
-   - Each image should tell a different story or show a different use case
-   - Vary settings, angles, and scenarios across the image set
-   - Show different benefits or features of the product
-   - Create a cohesive visual story of satisfied customers enjoying the product
-
-5. **Technical Specifications:**
-   - Aspect ratio: Square (1:1)
-   - Resolution: 2048x2048 pixels
-   - Suitable for Shopify product gallery display
-
-The lifestyle_images_prompt field in your response should be a dictionary keyed by variant identifier (e.g., "50_LB"), where each value contains "images_needed" (integer) and "prompt" (string).
-'''
-
-
-def _build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None, variants_needing_images: Dict = None) -> str:
+def _build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None) -> str:
     """
-    Build enhanced prompt for taxonomy assignment + weight estimation + purchase options + lifestyle image prompts.
+    Build enhanced prompt for taxonomy assignment + weight estimation + purchase options.
 
     Args:
         title: Product title
@@ -1160,7 +1073,6 @@ def _build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, curren
         taxonomy_doc: Full taxonomy document with purchase options
         current_weight: Existing weight from variant.weight field (0 if none)
         variant_data: Optional dict with variant info (dimensions, size_info metafield, etc.)
-        variants_needing_images: Dict of variants needing images (from get_variants_needing_images())
 
     Returns:
         Complete prompt string
@@ -1338,8 +1250,6 @@ Set needs_review = true if:
 - Weight confidence is "low"
 - Product is unusual or doesn't fit standard categories
 - Insufficient information to make confident estimates
-
-{_build_lifestyle_section(variants_needing_images)}
 
 Return ONLY a valid JSON object in this exact format (no markdown, no code blocks, no explanation):
 {{
@@ -1662,8 +1572,7 @@ def enhance_products_with_openai_batch(
                     variant_data = {'size_info_metafield': mf.get('value', '')}
                     break
 
-        variants_needing_images = get_variants_needing_images(product, target_image_count=5)
-        taxonomy_prompt = _build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
+        taxonomy_prompt = _build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data)
 
         api_params = {
             "model": model,
@@ -1812,20 +1721,19 @@ def enhance_products_with_openai_batch(
             subcategory = taxonomy_result.get('subcategory', '')
             weight_estimation = taxonomy_result.get('weight_estimation', {})
             purchase_options = taxonomy_result.get('purchase_options', [])
-            lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
 
-            # Validate taxonomy
-            from .utils import validate_taxonomy_assignment
-            is_valid, error_msg, suggestions = validate_taxonomy_assignment(
-                department,
-                category,
-                subcategory,
-                taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
-            )
-
-            if not is_valid:
-                logging.error(f"Taxonomy validation failed for product {i}: {error_msg}")
-                continue
+            # DISABLED: validate_taxonomy_assignment not implemented
+            # from .utils import validate_taxonomy_assignment
+            # is_valid, error_msg, suggestions = validate_taxonomy_assignment(
+            #     department,
+            #     category,
+            #     subcategory,
+            #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
+            # )
+            #
+            # if not is_valid:
+            #     logging.error(f"Taxonomy validation failed for product {i}: {error_msg}")
+            #     continue
 
             # Create enhanced product with taxonomy
             enhanced_product = product.copy()
@@ -1871,10 +1779,6 @@ def enhance_products_with_openai_batch(
                 'value': json.dumps(purchase_options),
                 'type': 'json'
             })
-
-            # Add lifestyle image prompts
-            if lifestyle_images_prompt:
-                enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
 
             enhanced_products.append(enhanced_product)
 
