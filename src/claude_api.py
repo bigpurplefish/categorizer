@@ -47,9 +47,10 @@ def save_cache(cache: Dict):
 
 
 def compute_product_hash(product: Dict) -> str:
-    """Compute a hash of the product's title and body_html to detect changes."""
+    """Compute a hash of the product's title and description to detect changes."""
     title = product.get('title', '')
-    body_html = product.get('body_html', '')
+    # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+    body_html = product.get('descriptionHtml') or product.get('body_html', '')
     content = f"{title}||{body_html}"
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
@@ -67,25 +68,40 @@ def load_markdown_file(file_path: str) -> str:
         return ""
 
 
-def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, variants_needing_images: Dict = None) -> str:
+def build_taxonomy_prompt(title: str, body_html: str, taxonomy_doc: str, current_weight: float = 0, variant_data: dict = None, variants_needing_images: Dict = None) -> str:
     """
-    Build the prompt for Claude to assign product taxonomy and generate lifestyle image prompts.
+    Build the prompt for Claude to assign product taxonomy, calculate shipping weight, determine purchase options, and generate lifestyle image prompts.
 
     Args:
         title: Product title
         body_html: Product description (HTML)
         taxonomy_doc: Full taxonomy markdown document
+        current_weight: Existing variant weight (if any)
+        variant_data: Dict with variant information (dimensions, etc.)
         variants_needing_images: Dict of variants needing images (from get_variants_needing_images())
 
     Returns:
         Formatted prompt string
     """
+    # Load packaging weight reference
+    packaging_doc = load_markdown_file("/Users/moosemarketer/Code/shared-docs/python/PACKAGING_WEIGHT_REFERENCE.md")
+
+    # Build dimensions info if available
+    dimensions_info = ""
+    if variant_data and variant_data.get('size_info_metafield'):
+        dimensions_info = f"\n- Dimensions/Size: {variant_data['size_info_metafield']}"
+
+    # Build current weight info
+    current_weight_info = ""
+    if current_weight > 0:
+        current_weight_info = f"\n- Current variant.weight: {current_weight} lbs"
+
     # Build image generation instructions if needed
     image_generation_section = ""
     if variants_needing_images and len(variants_needing_images) > 0:
         image_generation_section = """
 
-**STEP 2: LIFESTYLE IMAGE PROMPT GENERATION**
+**STEP 5: LIFESTYLE IMAGE PROMPT GENERATION**
 
 Some product variants need additional lifestyle images for their Shopify product gallery. For each variant listed below, generate a detailed prompt for Gemini Flash 2.5 to create photorealistic lifestyle product images.
 
@@ -144,25 +160,198 @@ The lifestyle_images_prompt field in your response should be a dictionary keyed 
     }
   }'''
 
-    prompt = f"""You are a product categorization expert. Given the product information below, assign it to the appropriate category in our taxonomy{"and generate lifestyle image prompts for variants needing additional images" if variants_needing_images else ""}.
+    prompt = f"""You are a product categorization and shipping weight estimation expert. Your tasks:
+1. Assign product to correct taxonomy category
+2. Determine applicable purchase/fulfillment options based on category
+3. Calculate accurate shipping weight (conservative estimate to avoid undercharging)
+{"4. Generate lifestyle image prompts for variants needing additional images" if variants_needing_images else ""}
 
 {taxonomy_doc}
 
-Product to categorize:
+{packaging_doc}
+
+Product to analyze:
 - Title: {title}
-- Description: {body_html}
+- Description: {body_html}{dimensions_info}{current_weight_info}
+
+INSTRUCTIONS:
 
 **STEP 1: TAXONOMY ASSIGNMENT**
+Analyze the product and assign to Department, Category, and Subcategory from taxonomy above.
 
-Analyze the product title and description carefully, then assign it to the most appropriate Department, Category, and Subcategory from the taxonomy above.
+**STEP 2: PURCHASE OPTIONS**
+Based on the assigned taxonomy category/subcategory, determine which purchase options apply (see taxonomy document for mappings).
+Purchase options are CATEGORY-DRIVEN, not size or weight dependent.
+- Option 1: Delivery (standard shipping)
+- Option 2: Store Pickup
+- Option 3: Local Delivery (within service area)
+- Option 4: White Glove Delivery (premium items)
+- Option 5: Customer Pickup Only (hay, bulk items)
+
+**STEP 3: WEIGHT ESTIMATION**
+Calculate weight based on whether the product is shipped:
+
+**FIRST: Determine if product is shipped**
+- Product IS SHIPPED if option 1 (Delivery) is in purchase_options
+- Product is NOT SHIPPED if option 1 is NOT in purchase_options
+
+**IF PRODUCT IS NOT SHIPPED:**
+
+   **Case A: Has existing weight (current weight > 0)**
+   - Use the existing variant weight as-is (no packaging added)
+   - final_shipping_weight = current weight
+   - confidence = "high"
+   - source = "variant_weight_no_shipping"
+   - reasoning = "Product not shipped, using existing weight without packaging"
+
+   **Case B: No existing weight (current weight = 0)**
+   - Calculate/estimate product weight using priorities below (B → C → D)
+   - Add ONLY product packaging weight (NO shipping packaging)
+   - weight = product_weight + product_packaging (NO shipping_packaging, NO 10% margin)
+   - final_shipping_weight = weight
+   - source = "extracted_from_text_no_shipping" or "calculated_from_dimensions_no_shipping" or "estimated_no_shipping"
+   - reasoning = "Product not shipped, calculated weight includes product packaging only (no shipping packaging)"
+
+**IF PRODUCT IS SHIPPED (option 1 in purchase_options):**
+
+   Calculate conservative shipping weight using this EXACT PRIORITY ORDER:
+
+   **PRIORITY A: Use existing variant.weight if available (HIGHEST PRIORITY)**
+      - If current weight > 0:
+        * product_weight = current weight
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "variant_weight"
+
+   **PRIORITY B: Extract from text (SECOND PRIORITY)**
+      - If weight is mentioned in title/description:
+        * Extract weight: "50 lb bag", "25 lbs", "3 oz can"
+        * Handle liquid conversions:
+          - "5 gallon sealer" → detect material type → convert to lbs
+          - "32 fl oz fertilizer" → detect material type → convert to lbs
+        * product_weight = extracted/converted weight
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "extracted_from_text"
+
+   **PRIORITY C: Calculate from dimensions (THIRD PRIORITY, for hardscape products only)**
+      - If dimensions are provided (for concrete/hardscape products):
+        * Calculate volume in cubic feet: (length_in × width_in × thickness_in) / 1728
+        * Estimate product_weight:
+          - Concrete/pavers: volume × 150 lbs/ft³
+          - Natural stone: volume × 165 lbs/ft³
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "calculated_from_dimensions"
+
+   **PRIORITY D: Estimate based on context (LOWEST PRIORITY, last resort)**
+      - If none of the above available:
+        * Estimate based on product type, description, and category context
+        * Use comparable products as reference
+        * Be CONSERVATIVE (round up)
+        * Apply packaging rules from table above
+        * shipping_weight = estimated_product_weight + product_packaging + shipping_packaging
+        * confidence = "medium" or "low" (use "low" if very uncertain)
+        * source = "estimated"
+
+   **CRITICAL WEIGHT RULES (for shipped products only):**
+   - Always round UP to nearest 0.5 lb
+   - Be conservative - underestimating costs us money
+   - Apply 10% safety margin to final weight: final_shipping_weight = shipping_weight × 1.10
+
+**STEP 4: NEEDS REVIEW FLAG**
+Set needs_review = true if:
+- Weight confidence is "low"
+- Product is unusual or doesn't fit standard categories
+- Insufficient information to make confident estimates
+
 {image_generation_section}
 
 Return ONLY a valid JSON object in this exact format (no markdown, no code blocks, no explanation):
 {{
   "department": "Exact department name from taxonomy",
   "category": "Exact category name from taxonomy",
-  "subcategory": "Exact subcategory name from taxonomy (or empty string if category has no subcategories)",
-  "reasoning": "Brief 1-sentence explanation of why you chose this categorization"{lifestyle_example}
+  "subcategory": "Exact subcategory name from taxonomy (or empty string if none)",
+  "reasoning": "Brief explanation of categorization choice",
+  "weight_estimation": {{
+    "original_weight": {current_weight},
+    "product_weight": 39.0,
+    "product_packaging_weight": 3.9,
+    "shipping_packaging_weight": 5.0,
+    "calculated_shipping_weight": 47.9,
+    "final_shipping_weight": 52.7,
+    "confidence": "high|medium|low",
+    "source": "variant_weight|extracted_from_text|calculated_from_dimensions|estimated|variant_weight_no_shipping|extracted_from_text_no_shipping|calculated_from_dimensions_no_shipping|estimated_no_shipping",
+    "reasoning": "Explain how you calculated/estimated the weight"
+  }},
+  "purchase_options": [1, 2, 3, 4, 5],
+  "needs_review": false{lifestyle_example}
+}}
+
+EXAMPLE 1 - Product that IS SHIPPED (option 1 in purchase_options):
+{{
+  "department": "Pet Supplies",
+  "category": "Dogs",
+  "subcategory": "Food",
+  "reasoning": "Dog food product",
+  "weight_estimation": {{
+    "original_weight": 50.0,
+    "product_weight": 50.0,
+    "product_packaging_weight": 2.5,
+    "shipping_packaging_weight": 3.0,
+    "calculated_shipping_weight": 55.5,
+    "final_shipping_weight": 61.0,
+    "confidence": "high",
+    "source": "variant_weight",
+    "reasoning": "Product is shipped (option 1). Used existing variant.weight of 50 lbs. Added 5% for bag weight (2.5 lbs) + 3 lbs shipping box. Applied 10% safety margin."
+  }},
+  "purchase_options": [1, 2, 3],
+  "needs_review": false
+}}
+
+EXAMPLE 2 - Product that is NOT SHIPPED with existing weight (option 1 NOT in purchase_options):
+{{
+  "department": "Livestock and Farm",
+  "category": "Horses",
+  "subcategory": "Feed",
+  "reasoning": "Hay bale - pickup only",
+  "weight_estimation": {{
+    "original_weight": 45.0,
+    "product_weight": 45.0,
+    "product_packaging_weight": 0,
+    "shipping_packaging_weight": 0,
+    "calculated_shipping_weight": 45.0,
+    "final_shipping_weight": 45.0,
+    "confidence": "high",
+    "source": "variant_weight_no_shipping",
+    "reasoning": "Product not shipped (pickup only). Using existing weight without packaging."
+  }},
+  "purchase_options": [5],
+  "needs_review": false
+}}
+
+EXAMPLE 3 - Product that is NOT SHIPPED with NO existing weight (option 1 NOT in purchase_options):
+{{
+  "department": "Landscape and Construction",
+  "category": "Aggregates",
+  "subcategory": "Mulch",
+  "reasoning": "Bulk mulch - pickup only",
+  "weight_estimation": {{
+    "original_weight": 0,
+    "product_weight": 40.0,
+    "product_packaging_weight": 0,
+    "shipping_packaging_weight": 0,
+    "calculated_shipping_weight": 40.0,
+    "final_shipping_weight": 40.0,
+    "confidence": "medium",
+    "source": "estimated_no_shipping",
+    "reasoning": "Product not shipped (pickup only). Estimated 1 cubic yard of mulch at ~40 lbs. No packaging added (sold loose/bulk)."
+  }},
+  "purchase_options": [2, 5],
+  "needs_review": false
 }}"""
 
     return prompt
@@ -307,7 +496,8 @@ def enhance_product_with_claude(
         raise ImportError(error_msg)
 
     title = product.get('title', '')
-    body_html = product.get('body_html', '')
+    # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+    body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
     if not title:
         error_msg = f"Product has no title, cannot enhance: {product}"
@@ -327,19 +517,33 @@ def enhance_product_with_claude(
         else:
             logging.info("All variants have sufficient images (5+), no lifestyle image prompts needed")
 
-        # ========== STEP 1: TAXONOMY ASSIGNMENT + LIFESTYLE IMAGE PROMPTS ==========
+        # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS + LIFESTYLE IMAGE PROMPTS ==========
         if status_fn:
-            log_and_status(status_fn, f"  🤖 Assigning taxonomy for: {title[:50]}...")
+            log_and_status(status_fn, f"  🤖 Assigning taxonomy and calculating shipping weight for: {title[:50]}...")
             if variants_needing_images:
                 log_and_status(status_fn, f"  🖼️  Generating lifestyle image prompts for {len(variants_needing_images)} variant(s)...")
 
         logging.info("=" * 80)
-        logging.info(f"CLAUDE API CALL #1: TAXONOMY ASSIGNMENT{' + LIFESTYLE IMAGE PROMPTS' if variants_needing_images else ''}")
+        logging.info(f"CLAUDE API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS{' + LIFESTYLE IMAGE PROMPTS' if variants_needing_images else ''})")
         logging.info(f"Product: {title}")
         logging.info(f"Model: {model}")
         logging.info("=" * 80)
 
-        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, variants_needing_images)
+        # Get first variant's weight for reference (if product has variants)
+        current_weight = 0
+        variant_data = None
+        if product.get('variants') and len(product['variants']) > 0:
+            first_variant = product['variants'][0]
+            current_weight = first_variant.get('weight', 0)
+
+            # Extract size_info metafield if exists
+            metafields = first_variant.get('metafields', [])
+            for mf in metafields:
+                if mf.get('key') == 'size_info':
+                    variant_data = {'size_info_metafield': mf.get('value', '')}
+                    break
+
+        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
 
         # Log prompt preview (first 500 chars)
         logging.debug(f"Taxonomy prompt (first 500 chars):\n{taxonomy_prompt[:500]}...")
@@ -385,11 +589,14 @@ def enhance_product_with_claude(
             logging.error(f"Raw response text: {taxonomy_text}")
             raise ValueError(f"{error_msg}\nResponse: {taxonomy_text[:200]}...")
 
-        # Validate required fields
+        # Validate and extract fields
         department = taxonomy_result.get('department', '')
         category = taxonomy_result.get('category', '')
         subcategory = taxonomy_result.get('subcategory', '')
         reasoning = taxonomy_result.get('reasoning', '')
+        weight_estimation = taxonomy_result.get('weight_estimation', {})
+        purchase_options = taxonomy_result.get('purchase_options', [])
+        needs_review = taxonomy_result.get('needs_review', False)
         lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
 
         if not department or not category:
@@ -400,6 +607,14 @@ def enhance_product_with_claude(
 
         logging.info(f"✅ Taxonomy assigned: {department} > {category} > {subcategory}")
         logging.info(f"📝 Reasoning: {reasoning}")
+        logging.info(f"⚖️  Weight Estimation:")
+        logging.info(f"   - Original weight: {weight_estimation.get('original_weight', 0)} lbs")
+        logging.info(f"   - Final shipping weight: {weight_estimation.get('final_shipping_weight', 0)} lbs")
+        logging.info(f"   - Confidence: {weight_estimation.get('confidence', 'unknown')}")
+        logging.info(f"   - Source: {weight_estimation.get('source', 'unknown')}")
+        logging.info(f"   - Reasoning: {weight_estimation.get('reasoning', '')}")
+        logging.info(f"🛒 Purchase Options: {purchase_options}")
+        logging.info(f"⚠️  Needs Review: {needs_review}")
 
         if lifestyle_images_prompt:
             logging.info(f"✅ Generated lifestyle image prompts for {len(lifestyle_images_prompt)} variant(s)")
@@ -414,6 +629,8 @@ def enhance_product_with_claude(
             if subcategory:
                 log_and_status(status_fn, f"    ✅ Subcategory: {subcategory}")
             log_and_status(status_fn, f"    📝 Reasoning: {reasoning}")
+            log_and_status(status_fn, f"    ⚖️  Shipping Weight: {weight_estimation.get('final_shipping_weight', 0)} lbs (confidence: {weight_estimation.get('confidence', 'unknown')})")
+            log_and_status(status_fn, f"    🛒 Purchase Options: {purchase_options}")
             if lifestyle_images_prompt:
                 log_and_status(status_fn, f"    🖼️  Generated {len(lifestyle_images_prompt)} lifestyle image prompt(s)")
 
@@ -607,18 +824,72 @@ def enhance_product_with_claude(
                 tags.append(tag)
 
         enhanced_product['tags'] = tags
-        enhanced_product['body_html'] = enhanced_description
+        # GraphQL format only (no REST API backward compatibility)
+        enhanced_product['descriptionHtml'] = enhanced_description
+
+        # Preserve status field if present in input (GraphQL), or set to ACTIVE by default
+        if 'status' in product:
+            enhanced_product['status'] = product['status']
+        else:
+            enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
 
         # Add lifestyle image prompts if any variants need images
         if lifestyle_images_prompt:
             enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
             logging.info(f"Added lifestyle_images_prompt to product for {len(lifestyle_images_prompt)} variant(s)")
 
+        # Update ALL variants with shipping weight and weight_data
+        final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
+        final_shipping_weight_grams = int(final_shipping_weight * 453.592)  # Convert lbs to grams
+
+        if 'variants' in enhanced_product and enhanced_product['variants']:
+            for variant in enhanced_product['variants']:
+                # Store weight data for output file (NOT sent to Shopify)
+                variant['weight_data'] = {
+                    'original_weight': weight_estimation.get('original_weight', 0),
+                    'product_weight': weight_estimation.get('product_weight', 0),
+                    'product_packaging_weight': weight_estimation.get('product_packaging_weight', 0),
+                    'shipping_packaging_weight': weight_estimation.get('shipping_packaging_weight', 0),
+                    'calculated_shipping_weight': weight_estimation.get('calculated_shipping_weight', 0),
+                    'final_shipping_weight': final_shipping_weight,
+                    'confidence': weight_estimation.get('confidence', 'unknown'),
+                    'source': weight_estimation.get('source', 'unknown'),
+                    'reasoning': weight_estimation.get('reasoning', ''),
+                    'needs_review': needs_review
+                }
+
+                # Update Shopify weight fields
+                variant['weight'] = final_shipping_weight
+                variant['grams'] = final_shipping_weight_grams
+
+        logging.info(f"✅ Updated {len(enhanced_product.get('variants', []))} variants with shipping weight: {final_shipping_weight} lbs")
+
+        # Initialize metafields array if not present
+        if 'metafields' not in enhanced_product:
+            enhanced_product['metafields'] = []
+
+        # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
+        enhanced_product['metafields'].append({
+            'namespace': 'custom',
+            'key': 'hide_online_price',
+            'value': 'true',
+            'type': 'boolean'
+        })
+
+        # Add purchase_options as product-level metafield
+        enhanced_product['metafields'].append({
+            'namespace': 'custom',
+            'key': 'purchase_options',
+            'value': json.dumps(purchase_options),
+            'type': 'json'
+        })
+
+        logging.info(f"✅ Added required metafields: hide_online_price=true, purchase_options={purchase_options}")
+
         # Add audience descriptions as metafields if multiple audiences
         if audience_count == 2 and description_audience_1 and description_audience_2:
-            # Initialize metafields array if it doesn't exist
-            if 'metafields' not in enhanced_product:
-                enhanced_product['metafields'] = []
+            # Metafields array already initialized above
+            pass
 
             # Add audience configuration metafield (for Liquid template)
             audience_metadata = {
@@ -879,10 +1150,25 @@ def enhance_products_with_claude_batch(
     taxonomy_batch_requests = []
     for i, product in enumerate(products):
         title = product.get('title', '')
-        body_html = product.get('body_html', '')
+        # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+        body_html = product.get('descriptionHtml') or product.get('body_html', '')
+
+        # Get first variant's weight for reference (if product has variants)
+        current_weight = 0
+        variant_data = None
+        if product.get('variants') and len(product['variants']) > 0:
+            first_variant = product['variants'][0]
+            current_weight = first_variant.get('weight', 0)
+
+            # Extract size_info metafield if exists
+            metafields = first_variant.get('metafields', [])
+            for mf in metafields:
+                if mf.get('key') == 'size_info':
+                    variant_data = {'size_info_metafield': mf.get('value', '')}
+                    break
 
         variants_needing_images = get_variants_needing_images(product, target_image_count=5)
-        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, variants_needing_images)
+        taxonomy_prompt = build_taxonomy_prompt(title, body_html, taxonomy_doc, current_weight, variant_data, variants_needing_images)
 
         taxonomy_batch_requests.append({
             "custom_id": f"taxonomy-{i}",
@@ -985,6 +1271,9 @@ def enhance_products_with_claude_batch(
             department = taxonomy_result.get('department', '')
             category = taxonomy_result.get('category', '')
             subcategory = taxonomy_result.get('subcategory', '')
+            weight_estimation = taxonomy_result.get('weight_estimation', {})
+            purchase_options = taxonomy_result.get('purchase_options', [])
+            needs_review = taxonomy_result.get('needs_review', False)
             lifestyle_images_prompt = taxonomy_result.get('lifestyle_images_prompt', {})
 
             # Create enhanced product with taxonomy
@@ -996,15 +1285,66 @@ def enhance_products_with_claude_batch(
                 tags.append(subcategory)
             enhanced_product['tags'] = tags
 
+            # Preserve status field if present in input (GraphQL), or set to ACTIVE by default
+            if 'status' in product:
+                enhanced_product['status'] = product['status']
+            else:
+                enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
+
             # Add lifestyle image prompts
             if lifestyle_images_prompt:
                 enhanced_product['lifestyle_images_prompt'] = lifestyle_images_prompt
+
+            # Update ALL variants with shipping weight and weight_data
+            final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
+            final_shipping_weight_grams = int(final_shipping_weight * 453.592)  # Convert lbs to grams
+
+            if 'variants' in enhanced_product and enhanced_product['variants']:
+                for variant in enhanced_product['variants']:
+                    # Store weight data for output file (NOT sent to Shopify)
+                    variant['weight_data'] = {
+                        'original_weight': weight_estimation.get('original_weight', 0),
+                        'product_weight': weight_estimation.get('product_weight', 0),
+                        'product_packaging_weight': weight_estimation.get('product_packaging_weight', 0),
+                        'shipping_packaging_weight': weight_estimation.get('shipping_packaging_weight', 0),
+                        'calculated_shipping_weight': weight_estimation.get('calculated_shipping_weight', 0),
+                        'final_shipping_weight': final_shipping_weight,
+                        'confidence': weight_estimation.get('confidence', 'unknown'),
+                        'source': weight_estimation.get('source', 'unknown'),
+                        'reasoning': weight_estimation.get('reasoning', ''),
+                        'needs_review': needs_review
+                    }
+
+                    # Update Shopify weight fields
+                    variant['weight'] = final_shipping_weight
+                    variant['grams'] = final_shipping_weight_grams
+
+            # Initialize metafields array if not present
+            if 'metafields' not in enhanced_product:
+                enhanced_product['metafields'] = []
+
+            # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
+            enhanced_product['metafields'].append({
+                'namespace': 'custom',
+                'key': 'hide_online_price',
+                'value': 'true',
+                'type': 'boolean'
+            })
+
+            # Add purchase_options as product-level metafield
+            enhanced_product['metafields'].append({
+                'namespace': 'custom',
+                'key': 'purchase_options',
+                'value': json.dumps(purchase_options),
+                'type': 'json'
+            })
 
             enhanced_products.append(enhanced_product)
 
             # Create description request
             title = product.get('title', '')
-            body_html = product.get('body_html', '')
+            # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+            body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
             description_prompt = build_description_prompt(title, body_html, department, voice_tone_doc, None)
 
@@ -1065,7 +1405,8 @@ def enhance_products_with_claude_batch(
                         lines = description.split('\n')
                         description = '\n'.join(lines[1:-1])
 
-                    enhanced_product['body_html'] = description
+                    # GraphQL format only (no REST API backward compatibility)
+                    enhanced_product['descriptionHtml'] = description
 
         logging.info(f"✅ Batch processing complete: {len(enhanced_products)} products enhanced")
         if status_fn:

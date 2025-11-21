@@ -306,7 +306,8 @@ def enhance_product_with_openai(
         raise ImportError(error_msg)
 
     title = product.get('title', '')
-    body_html = product.get('body_html', '')
+    # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+    body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
     if not title:
         error_msg = f"Product has no title, cannot enhance: {product}"
@@ -777,7 +778,14 @@ def enhance_product_with_openai(
                 tags.append(tag)
 
         enhanced_product['tags'] = tags
-        enhanced_product['body_html'] = enhanced_description
+        # GraphQL format only (no REST API backward compatibility)
+        enhanced_product['descriptionHtml'] = enhanced_description
+
+        # Preserve status field if present in input (GraphQL), or set to ACTIVE by default
+        if 'status' in product:
+            enhanced_product['status'] = product['status']
+        else:
+            enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
 
         # Add lifestyle image prompts if any variants need images
         if lifestyle_images_prompt:
@@ -810,10 +818,19 @@ def enhance_product_with_openai(
 
         logging.info(f"✅ Updated {len(enhanced_product.get('variants', []))} variants with shipping weight: {final_shipping_weight} lbs")
 
-        # Add purchase_options as product-level metafield
+        # Initialize metafields array if not present
         if 'metafields' not in enhanced_product:
             enhanced_product['metafields'] = []
 
+        # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
+        enhanced_product['metafields'].append({
+            'namespace': 'custom',
+            'key': 'hide_online_price',
+            'value': 'true',
+            'type': 'boolean'
+        })
+
+        # Add purchase_options as product-level metafield
         enhanced_product['metafields'].append({
             'namespace': 'custom',
             'key': 'purchase_options',
@@ -821,7 +838,7 @@ def enhance_product_with_openai(
             'type': 'json'
         })
 
-        logging.info(f"✅ Added purchase_options metafield: {purchase_options}")
+        logging.info(f"✅ Added required metafields: hide_online_price=true, purchase_options={purchase_options}")
 
         # Add audience descriptions as metafields if multiple audiences
         if audience_count == 2 and description_audience_1 and description_audience_2:
@@ -1233,59 +1250,88 @@ INSTRUCTIONS:
 **STEP 1: TAXONOMY ASSIGNMENT**
 Analyze the product and assign to Department, Category, and Subcategory from taxonomy above.
 
-**STEP 2: WEIGHT ESTIMATION**
-Calculate conservative shipping weight using this EXACT PRIORITY ORDER:
-
-**PRIORITY A: Use existing variant.weight if available (HIGHEST PRIORITY)**
-   - If current weight > 0:
-     * product_weight = current weight
-     * Apply packaging rules from table above
-     * shipping_weight = product_weight + product_packaging + shipping_packaging
-     * confidence = "high"
-     * source = "variant_weight"
-
-**PRIORITY B: Extract from text (SECOND PRIORITY)**
-   - If weight is mentioned in title/description:
-     * Extract weight: "50 lb bag", "25 lbs", "3 oz can"
-     * Handle liquid conversions:
-       - "5 gallon sealer" → detect material type → convert to lbs
-       - "32 fl oz fertilizer" → detect material type → convert to lbs
-     * product_weight = extracted/converted weight
-     * Apply packaging rules from table above
-     * shipping_weight = product_weight + product_packaging + shipping_packaging
-     * confidence = "high"
-     * source = "extracted_from_text"
-
-**PRIORITY C: Calculate from dimensions (THIRD PRIORITY, for hardscape products only)**
-   - If dimensions are provided (for concrete/hardscape products):
-     * Calculate volume in cubic feet: (length_in × width_in × thickness_in) / 1728
-     * Estimate product_weight:
-       - Concrete/pavers: volume × 150 lbs/ft³
-       - Natural stone: volume × 165 lbs/ft³
-     * Apply packaging rules from table above
-     * shipping_weight = product_weight + product_packaging + shipping_packaging
-     * confidence = "high"
-     * source = "calculated_from_dimensions"
-
-**PRIORITY D: Estimate based on context (LOWEST PRIORITY, last resort)**
-   - If none of the above available:
-     * Estimate based on product type, description, and category context
-     * Use comparable products as reference
-     * Be CONSERVATIVE (round up)
-     * Apply packaging rules from table above
-     * shipping_weight = estimated_product_weight + product_packaging + shipping_packaging
-     * confidence = "medium" or "low" (use "low" if very uncertain)
-     * source = "estimated"
-
-**CRITICAL WEIGHT RULES:**
-- Always round UP to nearest 0.5 lb
-- Be conservative - underestimating costs us money
-- Apply 10% safety margin to final weight: final_shipping_weight = shipping_weight × 1.10
-- For hay products: weight estimation not required (pickup only)
-
-**STEP 3: PURCHASE OPTIONS**
+**STEP 2: PURCHASE OPTIONS**
 Based on the assigned taxonomy category/subcategory, determine which purchase options apply (see taxonomy document for mappings).
 Purchase options are CATEGORY-DRIVEN, not size or weight dependent.
+- Option 1: Delivery (standard shipping)
+- Option 2: Store Pickup
+- Option 3: Local Delivery (within service area)
+- Option 4: White Glove Delivery (premium items)
+- Option 5: Customer Pickup Only (hay, bulk items)
+
+**STEP 3: WEIGHT ESTIMATION**
+Calculate weight based on whether the product is shipped:
+
+**FIRST: Determine if product is shipped**
+- Product IS SHIPPED if option 1 (Delivery) is in purchase_options
+- Product is NOT SHIPPED if option 1 is NOT in purchase_options
+
+**IF PRODUCT IS NOT SHIPPED:**
+
+   **Case A: Has existing weight (current weight > 0)**
+   - Use the existing variant weight as-is (no packaging added)
+   - final_shipping_weight = current weight
+   - confidence = "high"
+   - source = "variant_weight_no_shipping"
+   - reasoning = "Product not shipped, using existing weight without packaging"
+
+   **Case B: No existing weight (current weight = 0)**
+   - Calculate/estimate product weight using priorities below (B → C → D)
+   - Add ONLY product packaging weight (NO shipping packaging)
+   - weight = product_weight + product_packaging (NO shipping_packaging, NO 10% margin)
+   - final_shipping_weight = weight
+   - source = "extracted_from_text_no_shipping" or "calculated_from_dimensions_no_shipping" or "estimated_no_shipping"
+   - reasoning = "Product not shipped, calculated weight includes product packaging only (no shipping packaging)"
+
+**IF PRODUCT IS SHIPPED (option 1 in purchase_options):**
+
+   Calculate conservative shipping weight using this EXACT PRIORITY ORDER:
+
+   **PRIORITY A: Use existing variant.weight if available (HIGHEST PRIORITY)**
+      - If current weight > 0:
+        * product_weight = current weight
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "variant_weight"
+
+   **PRIORITY B: Extract from text (SECOND PRIORITY)**
+      - If weight is mentioned in title/description:
+        * Extract weight: "50 lb bag", "25 lbs", "3 oz can"
+        * Handle liquid conversions:
+          - "5 gallon sealer" → detect material type → convert to lbs
+          - "32 fl oz fertilizer" → detect material type → convert to lbs
+        * product_weight = extracted/converted weight
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "extracted_from_text"
+
+   **PRIORITY C: Calculate from dimensions (THIRD PRIORITY, for hardscape products only)**
+      - If dimensions are provided (for concrete/hardscape products):
+        * Calculate volume in cubic feet: (length_in × width_in × thickness_in) / 1728
+        * Estimate product_weight:
+          - Concrete/pavers: volume × 150 lbs/ft³
+          - Natural stone: volume × 165 lbs/ft³
+        * Apply packaging rules from table above
+        * shipping_weight = product_weight + product_packaging + shipping_packaging
+        * confidence = "high"
+        * source = "calculated_from_dimensions"
+
+   **PRIORITY D: Estimate based on context (LOWEST PRIORITY, last resort)**
+      - If none of the above available:
+        * Estimate based on product type, description, and category context
+        * Use comparable products as reference
+        * Be CONSERVATIVE (round up)
+        * Apply packaging rules from table above
+        * shipping_weight = estimated_product_weight + product_packaging + shipping_packaging
+        * confidence = "medium" or "low" (use "low" if very uncertain)
+        * source = "estimated"
+
+   **CRITICAL WEIGHT RULES (for shipped products only):**
+   - Always round UP to nearest 0.5 lb
+   - Be conservative - underestimating costs us money
+   - Apply 10% safety margin to final weight: final_shipping_weight = shipping_weight × 1.10
 
 **STEP 4: NEEDS REVIEW FLAG**
 Set needs_review = true if:
@@ -1309,14 +1355,14 @@ Return ONLY a valid JSON object in this exact format (no markdown, no code block
     "calculated_shipping_weight": 47.9,
     "final_shipping_weight": 52.7,
     "confidence": "high|medium|low",
-    "source": "variant_weight|extracted_from_text|calculated_from_dimensions|estimated",
+    "source": "variant_weight|extracted_from_text|calculated_from_dimensions|estimated|variant_weight_no_shipping|extracted_from_text_no_shipping|calculated_from_dimensions_no_shipping|estimated_no_shipping",
     "reasoning": "Explain how you calculated/estimated the weight"
   }},
   "purchase_options": [1, 2, 3, 4, 5],
   "needs_review": false
 }}
 
-EXAMPLE - Using existing variant.weight:
+EXAMPLE 1 - Product that IS SHIPPED (option 1 in purchase_options):
 {{
   "department": "Pet Supplies",
   "category": "Dogs",
@@ -1331,9 +1377,51 @@ EXAMPLE - Using existing variant.weight:
     "final_shipping_weight": 61.0,
     "confidence": "high",
     "source": "variant_weight",
-    "reasoning": "Used existing variant.weight of 50 lbs. Added 5% for bag weight (2.5 lbs) + 3 lbs shipping box. Applied 10% safety margin."
+    "reasoning": "Product is shipped (option 1). Used existing variant.weight of 50 lbs. Added 5% for bag weight (2.5 lbs) + 3 lbs shipping box. Applied 10% safety margin."
   }},
-  "purchase_options": [1, 3, 5],
+  "purchase_options": [1, 2, 3],
+  "needs_review": false
+}}
+
+EXAMPLE 2 - Product that is NOT SHIPPED with existing weight (option 1 NOT in purchase_options):
+{{
+  "department": "Livestock and Farm",
+  "category": "Horses",
+  "subcategory": "Feed",
+  "reasoning": "Hay bale - pickup only",
+  "weight_estimation": {{
+    "original_weight": 45.0,
+    "product_weight": 45.0,
+    "product_packaging_weight": 0,
+    "shipping_packaging_weight": 0,
+    "calculated_shipping_weight": 45.0,
+    "final_shipping_weight": 45.0,
+    "confidence": "high",
+    "source": "variant_weight_no_shipping",
+    "reasoning": "Product not shipped (pickup only). Using existing weight without packaging."
+  }},
+  "purchase_options": [5],
+  "needs_review": false
+}}
+
+EXAMPLE 3 - Product that is NOT SHIPPED with NO existing weight (option 1 NOT in purchase_options):
+{{
+  "department": "Landscape and Construction",
+  "category": "Aggregates",
+  "subcategory": "Mulch",
+  "reasoning": "Bulk mulch - pickup only",
+  "weight_estimation": {{
+    "original_weight": 0,
+    "product_weight": 40.0,
+    "product_packaging_weight": 0,
+    "shipping_packaging_weight": 0,
+    "calculated_shipping_weight": 40.0,
+    "final_shipping_weight": 40.0,
+    "confidence": "medium",
+    "source": "estimated_no_shipping",
+    "reasoning": "Product not shipped (pickup only). Estimated 1 cubic yard of mulch at ~40 lbs. No packaging added (sold loose/bulk)."
+  }},
+  "purchase_options": [2, 5],
   "needs_review": false
 }}"""
 
@@ -1559,7 +1647,8 @@ def enhance_products_with_openai_batch(
     taxonomy_requests = []
     for i, product in enumerate(products):
         title = product.get('title', '')
-        body_html = product.get('body_html', '')
+        # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+        body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
         # Get current weight and variant data
         current_weight = 0
@@ -1747,6 +1836,12 @@ def enhance_products_with_openai_batch(
                 tags.append(subcategory)
             enhanced_product['tags'] = tags
 
+            # Preserve status field if present in input (GraphQL), or set to ACTIVE by default
+            if 'status' in product:
+                enhanced_product['status'] = product['status']
+            else:
+                enhanced_product['status'] = 'ACTIVE'  # Default for GraphQL compatibility
+
             # Add weight estimation
             final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
             final_shipping_weight_grams = int(final_shipping_weight * 453.592)
@@ -1757,10 +1852,19 @@ def enhance_products_with_openai_batch(
                     variant['weight'] = final_shipping_weight
                     variant['grams'] = final_shipping_weight_grams
 
-            # Add purchase options metafield
+            # Initialize metafields array if not present
             if 'metafields' not in enhanced_product:
                 enhanced_product['metafields'] = []
 
+            # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
+            enhanced_product['metafields'].append({
+                'namespace': 'custom',
+                'key': 'hide_online_price',
+                'value': 'true',
+                'type': 'boolean'
+            })
+
+            # Add purchase options metafield
             enhanced_product['metafields'].append({
                 'namespace': 'custom',
                 'key': 'purchase_options',
@@ -1776,7 +1880,8 @@ def enhance_products_with_openai_batch(
 
             # Create description request
             title = product.get('title', '')
-            body_html = product.get('body_html', '')
+            # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+            body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
             description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc, None)
 
@@ -1864,7 +1969,8 @@ def enhance_products_with_openai_batch(
                         lines = description.split('\n')
                         description = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
 
-                    enhanced_product['body_html'] = description
+                    # GraphQL format only (no REST API backward compatibility)
+                    enhanced_product['descriptionHtml'] = description
 
         logging.info(f"✅ Batch processing complete: {len(enhanced_products)} products enhanced")
         if status_fn:
