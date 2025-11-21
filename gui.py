@@ -790,6 +790,117 @@ def build_gui():
 
     row += 1
 
+    # Taxonomy Doc Path field
+    label_frame = tb.Frame(container)
+    label_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)
+
+    tb.Label(label_frame, text="Taxonomy Doc", anchor="w").pack(side="left")
+    help_icon = tb.Label(label_frame, text=" ⓘ ", font=("Arial", 9),
+                         foreground="#5BC0DE", cursor="hand2")
+    help_icon.pack(side="left")
+    tb.Label(label_frame, text=":", anchor="w").pack(side="left")
+
+    ToolTip(help_icon, text="Path to the product taxonomy document.\n\n"
+                           "Default: /Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md\n\n"
+                           "This document defines product categories, subcategories,\n"
+                           "and how products should be classified.", bootstyle="info")
+
+    taxonomy_doc_var = tb.StringVar(value=cfg.get("TAXONOMY_DOC_PATH", ""))
+    tb.Entry(container, textvariable=taxonomy_doc_var, width=50).grid(
+        row=row, column=1, sticky="ew", padx=5, pady=5
+    )
+
+    def browse_taxonomy():
+        filename = filedialog.askopenfilename(
+            title="Select Taxonomy Document",
+            filetypes=[("Markdown files", "*.md"), ("All files", "*.*")]
+        )
+        if filename:
+            taxonomy_doc_var.set(filename)
+
+    tb.Button(container, text="Browse", command=browse_taxonomy, bootstyle="info-outline").grid(
+        row=row, column=2, padx=5, pady=5
+    )
+
+    def on_taxonomy_change(*args):
+        cfg["TAXONOMY_DOC_PATH"] = taxonomy_doc_var.get()
+        save_config(cfg)
+
+    taxonomy_doc_var.trace_add("write", on_taxonomy_change)
+
+    row += 1
+
+    # Voice/Tone Doc Path field
+    label_frame = tb.Frame(container)
+    label_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)
+
+    tb.Label(label_frame, text="Voice/Tone Doc", anchor="w").pack(side="left")
+    help_icon = tb.Label(label_frame, text=" ⓘ ", font=("Arial", 9),
+                         foreground="#5BC0DE", cursor="hand2")
+    help_icon.pack(side="left")
+    tb.Label(label_frame, text=":", anchor="w").pack(side="left")
+
+    ToolTip(help_icon, text="Path to the voice and tone guidelines document.\n\n"
+                           "Default: /Users/moosemarketer/Code/shared-docs/VOICE_AND_TONE_GUIDELINES.md\n\n"
+                           "This document defines how product descriptions should be\n"
+                           "written (tone, style, language patterns).", bootstyle="info")
+
+    voice_tone_doc_var = tb.StringVar(value=cfg.get("VOICE_TONE_DOC_PATH", ""))
+    tb.Entry(container, textvariable=voice_tone_doc_var, width=50).grid(
+        row=row, column=1, sticky="ew", padx=5, pady=5
+    )
+
+    def browse_voice_tone():
+        filename = filedialog.askopenfilename(
+            title="Select Voice/Tone Guidelines",
+            filetypes=[("Markdown files", "*.md"), ("All files", "*.*")]
+        )
+        if filename:
+            voice_tone_doc_var.set(filename)
+
+    tb.Button(container, text="Browse", command=browse_voice_tone, bootstyle="info-outline").grid(
+        row=row, column=2, padx=5, pady=5
+    )
+
+    def on_voice_tone_change(*args):
+        cfg["VOICE_TONE_DOC_PATH"] = voice_tone_doc_var.get()
+        save_config(cfg)
+
+    voice_tone_doc_var.trace_add("write", on_voice_tone_change)
+
+    row += 1
+
+    # Verbose Mode checkbox
+    label_frame = tb.Frame(container)
+    label_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)
+
+    tb.Label(label_frame, text="Verbose Logging", anchor="w").pack(side="left")
+    help_icon = tb.Label(label_frame, text=" ⓘ ", font=("Arial", 9),
+                         foreground="#5BC0DE", cursor="hand2")
+    help_icon.pack(side="left")
+    tb.Label(label_frame, text=":", anchor="w").pack(side="left")
+
+    ToolTip(help_icon, text="Enable verbose logging for detailed output.\n\n"
+                           "When enabled, the log file will contain more detailed\n"
+                           "information about the processing steps.", bootstyle="info")
+
+    verbose_var = tb.BooleanVar(value=cfg.get("VERBOSE", False))
+    verbose_check = tb.Checkbutton(
+        container,
+        text="Enable detailed logging",
+        variable=verbose_var,
+        bootstyle="primary-round-toggle"
+    )
+    verbose_check.grid(row=row, column=1, columnspan=2, sticky="w", padx=5, pady=5)
+
+    def on_verbose_change(*args):
+        cfg["VERBOSE"] = verbose_var.get()
+        save_config(cfg)
+
+    verbose_var.trace_add("write", on_verbose_change)
+
+    row += 1
+
     # Processing Mode field
     label_frame = tb.Frame(container)
     label_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)

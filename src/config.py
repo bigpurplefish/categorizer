@@ -39,6 +39,7 @@ def load_config():
         "LOG_FILE": "",
         "TAXONOMY_DOC_PATH": os.path.join(SHARED_DOCS_DIR, "PRODUCT_TAXONOMY.md"),
         "VOICE_TONE_DOC_PATH": os.path.join(SHARED_DOCS_DIR, "VOICE_AND_TONE_GUIDELINES.md"),
+        "VERBOSE": False,
         "PROCESSING_MODE": "skip",
         "START_RECORD": "",
         "END_RECORD": "",
