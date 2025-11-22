@@ -598,7 +598,8 @@ def enhance_product_with_openai(
             if not is_reasoning_model(model):
                 api_params["temperature"] = 0.7
             if uses_max_completion_tokens(model):
-                api_params["max_completion_tokens"] = 2048
+                # GPT-5 needs higher limit for complete descriptions
+                api_params["max_completion_tokens"] = 8192
             else:
                 api_params["max_tokens"] = 2048
 
@@ -647,7 +648,8 @@ def enhance_product_with_openai(
             if not is_reasoning_model(model):
                 api_params["temperature"] = 0.7
             if uses_max_completion_tokens(model):
-                api_params["max_completion_tokens"] = 2048
+                # GPT-5 needs higher limit for complete descriptions
+                api_params["max_completion_tokens"] = 8192
             else:
                 api_params["max_tokens"] = 2048
 
@@ -705,7 +707,8 @@ def enhance_product_with_openai(
             if not is_reasoning_model(model):
                 api_params["temperature"] = 0.7
             if uses_max_completion_tokens(model):
-                api_params["max_completion_tokens"] = 2048
+                # GPT-5 needs higher limit for complete descriptions
+                api_params["max_completion_tokens"] = 8192
             else:
                 api_params["max_tokens"] = 2048
 
