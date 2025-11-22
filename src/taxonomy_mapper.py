@@ -384,12 +384,19 @@ def generate_taxonomy_mapping_with_ai(
 
             logging.info(f"Calling OpenAI API ({model}) for taxonomy mapping...")
 
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0,  # Deterministic for consistent mappings
-                max_tokens=16000
-            )
+            # GPT-5 models use max_completion_tokens instead of max_tokens
+            api_params = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0  # Deterministic for consistent mappings
+            }
+
+            if model.startswith("gpt-5"):
+                api_params["max_completion_tokens"] = 16000
+            else:
+                api_params["max_tokens"] = 16000
+
+            response = client.chat.completions.create(**api_params)
 
             result_text = response.choices[0].message.content.strip()
 
