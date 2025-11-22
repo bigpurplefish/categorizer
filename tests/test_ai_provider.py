@@ -557,7 +557,8 @@ class TestBatchEnhanceProducts:
     @patch('src.ai_provider.save_cache')
     @patch('src.ai_provider.load_cache')
     @patch('src.ai_provider.enhance_product')
-    def test_batch_enhance_with_openai(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
+    @patch('src.taxonomy_search.fetch_shopify_taxonomy_from_github')
+    def test_batch_enhance_with_openai(self, mock_fetch_taxonomy, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test batch enhancement with OpenAI provider."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
         cfg = {
@@ -570,18 +571,14 @@ class TestBatchEnhanceProducts:
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
         mock_load_md.return_value = "# Test Doc"
         mock_enhance.return_value = {**products[0], "product_type": "Pet Supplies", "tags": ["Dogs"]}
+        mock_fetch_taxonomy.return_value = [{"id": "cat1", "name": "Category 1"}]
 
-        # Mock shopify_api module being imported
-        shopify_api_mock = MagicMock()
-        shopify_api_mock.fetch_shopify_taxonomy_from_github.return_value = [{"id": "cat1", "name": "Category 1"}]
-
-        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
-            result = batch_enhance_products(products, cfg, status_fn)
+        result = batch_enhance_products(products, cfg, status_fn)
 
         assert len(result) == 1
         assert result[0]["product_type"] == "Pet Supplies"
         # Verify Shopify taxonomy was fetched for OpenAI
-        shopify_api_mock.fetch_shopify_taxonomy_from_github.assert_called_once()
+        mock_fetch_taxonomy.assert_called_once()
 
     @patch('src.ai_provider.load_markdown_file')
     @patch('src.ai_provider.save_cache')

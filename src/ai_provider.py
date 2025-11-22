@@ -69,7 +69,8 @@ def enhance_product(
     voice_tone_doc: str,
     cfg: Dict,
     shopify_categories: List[Dict] = None,
-    status_fn=None
+    status_fn=None,
+    taxonomy_mappings: Dict = None
 ) -> Dict:
     """
     Enhance a single product using configured AI provider.
@@ -79,8 +80,9 @@ def enhance_product(
         taxonomy_doc: Taxonomy markdown content
         voice_tone_doc: Voice and tone guidelines markdown content
         cfg: Configuration dictionary (contains provider, API keys, models)
-        shopify_categories: List of Shopify taxonomy categories (optional)
+        shopify_categories: List of Shopify taxonomy categories (deprecated, use taxonomy_mappings)
         status_fn: Optional status update function
+        taxonomy_mappings: Pre-computed taxonomy mappings (our taxonomy -> Shopify taxonomy)
 
     Returns:
         Enhanced product dictionary
@@ -135,7 +137,8 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            audience_config
+            audience_config,
+            taxonomy_mappings
         )
 
     elif provider == "claude":
@@ -155,7 +158,8 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            audience_config
+            audience_config,
+            taxonomy_mappings
         )
 
     else:
@@ -311,9 +315,9 @@ def batch_enhance_products(
             # Load Shopify categories for OpenAI
             shopify_categories = []
             try:
-                from . import shopify_api
+                from .taxonomy_search import fetch_shopify_taxonomy_from_github
                 log_and_status(status_fn, f"Loading Shopify product taxonomy...")
-                shopify_categories = shopify_api.fetch_shopify_taxonomy_from_github(status_fn)
+                shopify_categories = fetch_shopify_taxonomy_from_github(status_fn)
                 log_and_status(status_fn, f"")
             except Exception as e:
                 logging.warning(f"Failed to fetch Shopify taxonomy: {e}")
@@ -345,22 +349,35 @@ def batch_enhance_products(
     # Standard mode (not batch)
     log_and_status(status_fn, f"🤖 Using {provider_name} ({model})\n")
 
-    # Fetch Shopify taxonomy categories from GitHub (for AI matching)
-    shopify_categories = []
-    if provider == "openai":
-        # Only fetch for OpenAI (Claude doesn't use this yet)
-        try:
-            from . import shopify_api
+    # Initialize intelligent Shopify taxonomy mapping
+    taxonomy_mappings = None
+    try:
+        from .taxonomy_search import fetch_shopify_taxonomy_from_github
+        from .taxonomy_mapper import get_or_create_taxonomy_mapping
 
-            log_and_status(status_fn, f"Loading Shopify product taxonomy...")
-            shopify_categories = shopify_api.fetch_shopify_taxonomy_from_github(status_fn)
+        log_and_status(status_fn, f"Loading Shopify product taxonomy...")
+        shopify_categories = fetch_shopify_taxonomy_from_github(status_fn)
+
+        if shopify_categories:
+            log_and_status(status_fn, f"✅ Loaded {len(shopify_categories)} Shopify categories")
+
+            # Get or create intelligent taxonomy mapping (cached, only regenerates if taxonomies changed)
+            taxonomy_mappings = get_or_create_taxonomy_mapping(
+                our_taxonomy_path=taxonomy_path,
+                shopify_categories=shopify_categories,
+                api_key=api_key,
+                provider=provider,
+                model=model,
+                status_fn=status_fn
+            )
+
+            log_and_status(status_fn, f"✅ Taxonomy mapping ready ({len(taxonomy_mappings)} categories)")
             log_and_status(status_fn, f"")
-
-            if not shopify_categories:
-                logging.warning("Failed to load Shopify taxonomy - category matching will be skipped")
-        except Exception as e:
-            logging.warning(f"Failed to fetch Shopify taxonomy: {e}")
-            shopify_categories = []
+        else:
+            logging.warning("Failed to load Shopify taxonomy - category matching will be disabled")
+    except Exception as e:
+        logging.warning(f"Failed to initialize taxonomy mapping: {e}")
+        taxonomy_mappings = None
 
     # Load cache
     cache = load_cache()
@@ -423,8 +440,9 @@ def batch_enhance_products(
                 taxonomy_doc,
                 voice_tone_doc,
                 cfg,
-                shopify_categories,
-                status_fn
+                shopify_categories=None,  # Deprecated - using taxonomy_mappings now
+                status_fn=status_fn,
+                taxonomy_mappings=taxonomy_mappings
             )
 
             # Save to cache

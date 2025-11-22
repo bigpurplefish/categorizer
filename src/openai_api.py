@@ -13,6 +13,14 @@ except ImportError:
     logging.warning("openai package not installed. OpenAI features will be disabled.")
 
 from .config import log_and_status
+from .product_utils import (
+    format_purchase_options_metafield,
+    add_metafield_if_not_exists,
+    reorder_product_fields,
+    should_calculate_shipping_weight,
+    is_non_shipped_category,
+    remove_weight_data_from_variants
+)
 
 
 def is_reasoning_model(model: str) -> bool:
@@ -274,7 +282,8 @@ def enhance_product_with_openai(
     api_key: str,
     model: str,
     status_fn=None,
-    audience_config: Dict = None
+    audience_config: Dict = None,
+    taxonomy_mappings: Dict = None
 ) -> Dict:
     """
     Enhance a single product using OpenAI API.
@@ -796,23 +805,18 @@ def enhance_product_with_openai(
         if 'metafields' not in enhanced_product:
             enhanced_product['metafields'] = []
 
-        # Add REQUIRED hide_online_price metafield (MUST be present for ALL products per GraphQL requirements)
-        enhanced_product['metafields'].append({
-            'namespace': 'custom',
-            'key': 'hide_online_price',
-            'value': 'true',
-            'type': 'boolean'
-        })
+        # Add REQUIRED hide_online_price metafield (check for duplicates)
+        if add_metafield_if_not_exists(enhanced_product, 'custom', 'hide_online_price', 'true', 'boolean'):
+            logging.info(f"✅ Added hide_online_price metafield")
+        else:
+            logging.info(f"ℹ️  hide_online_price metafield already exists")
 
-        # Add purchase_options as product-level metafield
-        enhanced_product['metafields'].append({
-            'namespace': 'custom',
-            'key': 'purchase_options',
-            'value': json.dumps(purchase_options),
-            'type': 'json'
-        })
-
-        logging.info(f"✅ Added required metafields: hide_online_price=true, purchase_options={purchase_options}")
+        # Add purchase_options as product-level metafield (formatted as object mapping)
+        purchase_options_value = format_purchase_options_metafield(purchase_options)
+        if add_metafield_if_not_exists(enhanced_product, 'custom', 'purchase_options', purchase_options_value, 'json'):
+            logging.info(f"✅ Added purchase_options metafield: {purchase_options}")
+        else:
+            logging.info(f"ℹ️  purchase_options metafield already exists")
 
         # Add audience descriptions as metafields if multiple audiences
         if audience_count == 2 and description_audience_1 and description_audience_2:
@@ -858,21 +862,28 @@ def enhance_product_with_openai(
             logging.info(f"  - description_audience_2: {len(description_audience_2)} chars")
 
         # ========== STEP 3: SHOPIFY CATEGORY MATCHING ==========
-        # Use AI to match product to Shopify's standard taxonomy
+        # Use intelligent pre-computed mapping (one-time AI mapping, cached)
         shopify_category_id = None
-        if shopify_categories and len(shopify_categories) > 0:
+        if taxonomy_mappings:
             try:
-                shopify_category_id = match_shopify_category_with_openai(
-                    title,
-                    enhanced_description,
-                    shopify_categories,
-                    api_key,
-                    model,
-                    status_fn
+                from .taxonomy_mapper import lookup_shopify_category
+
+                shopify_category_id = lookup_shopify_category(
+                    department,
+                    category,
+                    subcategory,
+                    taxonomy_mappings
                 )
+
+                if shopify_category_id:
+                    logging.info(f"✅ Matched to Shopify category via intelligent mapping")
+                else:
+                    logging.warning(f"⚠️  No Shopify category mapping found for: {department} > {category} > {subcategory}")
             except Exception as e:
-                logging.warning(f"Failed to match Shopify category: {e}")
+                logging.warning(f"Failed to lookup Shopify category: {e}")
                 shopify_category_id = None
+        else:
+            logging.info("ℹ️  Taxonomy mappings not available - skipping Shopify category matching")
 
         # Store Shopify category ID in product
         if shopify_category_id:
@@ -880,7 +891,6 @@ def enhance_product_with_openai(
             logging.info(f"Stored Shopify category ID: {shopify_category_id}")
         else:
             enhanced_product['shopify_category_id'] = None
-            logging.warning("No Shopify category ID assigned")
 
         logging.info("=" * 80)
         logging.info(f"✅ PRODUCT ENHANCEMENT COMPLETE: {title}")
@@ -888,6 +898,14 @@ def enhance_product_with_openai(
         logging.info(f"Shopify category ID: {enhanced_product.get('shopify_category_id', 'None')}")
         logging.info(f"Description length: {len(enhanced_description)} characters")
         logging.info("=" * 80)
+
+        # Remove weight_data from non-shipped products
+        if not should_calculate_shipping_weight(purchase_options):
+            enhanced_product = remove_weight_data_from_variants(enhanced_product)
+            logging.info(f"ℹ️  Removed weight_data from non-shipped product (purchase_options: {purchase_options})")
+
+        # Reorder fields according to GraphQL output requirements
+        enhanced_product = reorder_product_fields(enhanced_product)
 
         return enhanced_product
 
