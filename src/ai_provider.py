@@ -248,7 +248,9 @@ def batch_enhance_products(
     cfg: Dict,
     status_fn,
     taxonomy_path: str = "/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md",
-    voice_tone_path: str = "docs/VOICE_AND_TONE_GUIDELINES.md"
+    voice_tone_path: str = "docs/VOICE_AND_TONE_GUIDELINES.md",
+    force_refresh_cache: bool = False,
+    force_refresh_taxonomy: bool = False
 ) -> List[Dict]:
     """
     Enhance multiple products with configured AI provider using caching.
@@ -261,6 +263,8 @@ def batch_enhance_products(
         status_fn: Status update function
         taxonomy_path: Path to taxonomy markdown file
         voice_tone_path: Path to voice and tone guidelines markdown file
+        force_refresh_cache: If True, bypass AI enhancement cache and re-process all products
+        force_refresh_taxonomy: If True, force regenerate taxonomy mapping with AI
 
     Returns:
         List of enhanced product dictionaries
@@ -370,7 +374,8 @@ def batch_enhance_products(
                 api_key=api_key,
                 provider=provider,
                 model=model,
-                status_fn=status_fn
+                status_fn=status_fn,
+                force_remap=force_refresh_taxonomy
             )
 
             log_and_status(status_fn, f"✅ Taxonomy mapping ready ({len(taxonomy_mappings)} categories)")
@@ -385,6 +390,12 @@ def batch_enhance_products(
     cache = load_cache()
     cached_products = cache.get("products", {})
 
+    # Handle force refresh cache
+    if force_refresh_cache:
+        logging.info("⚠️  Force refresh AI cache enabled - bypassing all cached data")
+        log_and_status(status_fn, "⚠️  Force refresh AI cache enabled - re-processing all products")
+        cached_products = {}  # Clear cache in memory (will re-process everything)
+
     enhanced_products = []
     enhanced_count = 0
     cached_count = 0
@@ -396,6 +407,10 @@ def batch_enhance_products(
     logging.info(f"Provider: {provider_name}")
     logging.info(f"Model: {model}")
     logging.info(f"Total products to process: {total}")
+    if force_refresh_cache:
+        logging.info(f"Force Refresh Cache: ENABLED")
+    if force_refresh_taxonomy:
+        logging.info(f"Force Refresh Taxonomy: ENABLED")
     logging.info("=" * 80)
 
     for i, product in enumerate(products, 1):

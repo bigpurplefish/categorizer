@@ -92,6 +92,16 @@ def main():
         action="store_true",
         help="Enable batch processing mode for 50%% cost savings (asynchronous, 24hr completion)"
     )
+    parser.add_argument(
+        "--force-refresh-ai-cache",
+        action="store_true",
+        help="Force refresh AI enhancement cache (re-process all products even if cached)"
+    )
+    parser.add_argument(
+        "--force-refresh-taxonomy",
+        action="store_true",
+        help="Force regenerate taxonomy mapping using AI (use when taxonomy structure changes)"
+    )
 
     args = parser.parse_args()
 
@@ -126,6 +136,12 @@ def main():
     if args.batch_mode:
         config["USE_BATCH_MODE"] = True
         print_status("Batch mode enabled: 50% cost savings, asynchronous processing")
+    if args.force_refresh_ai_cache:
+        config["FORCE_REFRESH_AI_CACHE"] = True
+        print_status("⚠️  Force refresh AI cache enabled - re-processing all products")
+    if args.force_refresh_taxonomy:
+        config["FORCE_REFRESH_TAXONOMY"] = True
+        print_status("⚠️  Force refresh taxonomy enabled - regenerating taxonomy mapping")
 
     # Check for API keys
     if config.get("AI_PROVIDER") == "claude":
@@ -171,7 +187,9 @@ def main():
         enhanced_products = batch_enhance_products(
             products,
             config,
-            status_fn=print_status
+            status_fn=print_status,
+            force_refresh_cache=config.get("FORCE_REFRESH_AI_CACHE", False),
+            force_refresh_taxonomy=config.get("FORCE_REFRESH_TAXONOMY", False)
         )
         print_status(f"Enhanced {len(enhanced_products)} products")
     except Exception as e:

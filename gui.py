@@ -456,7 +456,9 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
                 cfg,
                 status,
                 taxonomy_path,
-                voice_tone_path
+                voice_tone_path,
+                force_refresh_cache=cfg.get("FORCE_REFRESH_AI_CACHE", False),
+                force_refresh_taxonomy=cfg.get("FORCE_REFRESH_TAXONOMY", False)
             )
 
             log_and_status(status, "")
@@ -1027,6 +1029,57 @@ def build_gui():
             save_config(cfg)
 
     end_record_var.trace_add("write", on_end_change)
+
+    row += 1
+
+    # Cache Options section
+    label_frame = tb.Frame(container)
+    label_frame.grid(row=row, column=0, sticky="w", padx=5, pady=5)
+
+    tb.Label(label_frame, text="Cache Options", anchor="w").pack(side="left")
+    help_icon = tb.Label(label_frame, text=" ⓘ ", font=("Arial", 9),
+                         foreground="#5BC0DE", cursor="hand2")
+    help_icon.pack(side="left")
+    tb.Label(label_frame, text=":", anchor="w").pack(side="left")
+
+    ToolTip(help_icon, text="Force refresh cached data to re-process products.\n\n"
+                           "AI Cache: Re-process all products with AI even if cached.\n"
+                           "Taxonomy Mapping: Regenerate mapping from our taxonomy to Shopify's.\n\n"
+                           "Tip: Use when taxonomy or guidelines change.", bootstyle="info")
+
+    # Checkboxes for cache refresh options
+    cache_frame = tb.Frame(container)
+    cache_frame.grid(row=row, column=1, columnspan=2, sticky="w", padx=5, pady=5)
+
+    force_refresh_ai_var = tb.BooleanVar(value=cfg.get("FORCE_REFRESH_AI_CACHE", False))
+    force_refresh_ai_check = tb.Checkbutton(
+        cache_frame,
+        text="Force Refresh AI Cache",
+        variable=force_refresh_ai_var,
+        bootstyle="warning-round-toggle"
+    )
+    force_refresh_ai_check.pack(side="left", padx=(0, 20))
+
+    force_refresh_taxonomy_var = tb.BooleanVar(value=cfg.get("FORCE_REFRESH_TAXONOMY", False))
+    force_refresh_taxonomy_check = tb.Checkbutton(
+        cache_frame,
+        text="Force Refresh Taxonomy Mapping",
+        variable=force_refresh_taxonomy_var,
+        bootstyle="warning-round-toggle"
+    )
+    force_refresh_taxonomy_check.pack(side="left")
+
+    # Auto-save callbacks
+    def on_force_ai_change(*args):
+        cfg["FORCE_REFRESH_AI_CACHE"] = force_refresh_ai_var.get()
+        save_config(cfg)
+
+    def on_force_taxonomy_change(*args):
+        cfg["FORCE_REFRESH_TAXONOMY"] = force_refresh_taxonomy_var.get()
+        save_config(cfg)
+
+    force_refresh_ai_var.trace_add("write", on_force_ai_change)
+    force_refresh_taxonomy_var.trace_add("write", on_force_taxonomy_change)
 
     row += 1
 

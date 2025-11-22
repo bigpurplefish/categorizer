@@ -43,6 +43,8 @@ def load_config():
         "PROCESSING_MODE": "skip",
         "START_RECORD": "",
         "END_RECORD": "",
+        "FORCE_REFRESH_AI_CACHE": False,
+        "FORCE_REFRESH_TAXONOMY": False,
         "WINDOW_GEOMETRY": "800x800"
     }
 
