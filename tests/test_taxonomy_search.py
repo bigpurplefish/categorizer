@@ -143,13 +143,13 @@ class TestSaveTaxonomyCache:
         assert "Unexpected error saving taxonomy" in caplog.text
 
     def test_save_cache_default_path(self, monkeypatch, temp_dir):
-        """Test saving cache with default path (current directory)."""
+        """Test saving cache with default path (cache directory)."""
         monkeypatch.chdir(str(temp_dir))
         test_cache = {"Test": "gid://shopify/TaxonomyCategory/123"}
 
         taxonomy_search.save_taxonomy_cache(test_cache)
 
-        expected_path = temp_dir / "product_taxonomy.json"
+        expected_path = temp_dir / "cache" / "product_taxonomy.json"
         assert expected_path.exists()
 
 
@@ -422,7 +422,9 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         monkeypatch.chdir(str(temp_dir))
 
         # Create a recent cache file
-        cache_file = temp_dir / "shopify_taxonomy_cache.json"
+        cache_dir = temp_dir / "cache"
+        cache_dir.mkdir()
+        cache_file = cache_dir / "shopify_taxonomy_cache.json"
         cache_data = {
             'cached_at': datetime.now().isoformat(),
             'categories': [
@@ -471,7 +473,9 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
         monkeypatch.chdir(str(temp_dir))
 
         # Create a stale cache
-        cache_file = temp_dir / "shopify_taxonomy_cache.json"
+        cache_dir = temp_dir / "cache"
+        cache_dir.mkdir()
+        cache_file = cache_dir / "shopify_taxonomy_cache.json"
         old_date = datetime.now() - timedelta(days=40)
         cache_data = {
             'cached_at': old_date.isoformat(),
@@ -515,7 +519,7 @@ gid://shopify/TaxonomyCategory/aa_3 : Home & Garden > Lawn & Garden"""
 
         taxonomy_search.fetch_shopify_taxonomy_from_github()
 
-        cache_file = temp_dir / "shopify_taxonomy_cache.json"
+        cache_file = temp_dir / "cache" / "shopify_taxonomy_cache.json"
         assert cache_file.exists()
 
 

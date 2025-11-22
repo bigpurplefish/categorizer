@@ -23,7 +23,7 @@ from .config import log_and_status
 
 
 # Cache file for taxonomy mappings
-MAPPING_CACHE_FILE = "taxonomy_mapping.json"
+MAPPING_CACHE_FILE = "cache/taxonomy_mapping.json"
 
 
 def compute_file_hash(file_path: str) -> str:
@@ -183,6 +183,8 @@ def save_mapping_cache(cache: Dict):
         cache: Mapping cache dictionary
     """
     try:
+        # Ensure cache directory exists
+        os.makedirs(os.path.dirname(MAPPING_CACHE_FILE), exist_ok=True)
         with open(MAPPING_CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(cache, f, indent=2, ensure_ascii=False)
         logging.info(f"Saved taxonomy mapping cache to {MAPPING_CACHE_FILE}")

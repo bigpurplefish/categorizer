@@ -17,7 +17,7 @@ from . import openai_api
 
 
 # Cache file location
-CACHE_FILE = "claude_enhanced_cache.json"  # Keep same name for backward compatibility
+CACHE_FILE = "cache/enhanced_cache.json"
 
 
 def load_cache() -> Dict:
@@ -36,6 +36,8 @@ def load_cache() -> Dict:
 def save_cache(cache: Dict):
     """Save the AI enhancement cache to disk."""
     try:
+        # Ensure cache directory exists
+        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
         with open(CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(cache, f, indent=2, ensure_ascii=False)
     except Exception as e:

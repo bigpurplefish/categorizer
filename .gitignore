@@ -3,10 +3,11 @@
 # Configuration files (contain API keys)
 config.json
 
-# Cache files
-product_taxonomy.json
-shopify_taxonomy_cache.json
-claude_enhanced_cache.json
+# Cache directory (keep directory, ignore contents)
+cache/*.json
+!cache/.gitkeep
+
+# Coverage files
 coverage.json
 
 # Python

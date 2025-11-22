@@ -58,8 +58,8 @@ def load_taxonomy_cache(cache_file_path: str = None):
         Dictionary mapping category names to taxonomy IDs
     """
     if cache_file_path is None:
-        # Default to current directory
-        cache_file_path = os.path.join(os.getcwd(), "product_taxonomy.json")
+        # Default to cache directory
+        cache_file_path = os.path.join(os.getcwd(), "cache", "product_taxonomy.json")
 
     try:
         if os.path.exists(cache_file_path):
@@ -84,10 +84,12 @@ def save_taxonomy_cache(taxonomy_cache, cache_file_path: str = None):
         cache_file_path: Optional path to cache file. If None, uses default location.
     """
     if cache_file_path is None:
-        # Default to current directory
-        cache_file_path = os.path.join(os.getcwd(), "product_taxonomy.json")
+        # Default to cache directory
+        cache_file_path = os.path.join(os.getcwd(), "cache", "product_taxonomy.json")
 
     try:
+        # Ensure cache directory exists
+        os.makedirs(os.path.dirname(cache_file_path), exist_ok=True)
         with open(cache_file_path, 'w', encoding='utf-8') as f:
             json.dump(taxonomy_cache, f, indent=4)
     except IOError as e:
@@ -313,7 +315,7 @@ def fetch_shopify_taxonomy_from_github(status_fn=None):
         List of dicts with 'id' and 'fullName' for each category
     """
     TAXONOMY_URL = "https://raw.githubusercontent.com/Shopify/product-taxonomy/main/dist/en/categories.txt"
-    CACHE_FILE = "shopify_taxonomy_cache.json"
+    CACHE_FILE = "cache/shopify_taxonomy_cache.json"
     CACHE_DURATION_DAYS = 30  # Shopify updates quarterly, so 30 days is safe
 
     try:
@@ -376,6 +378,8 @@ def fetch_shopify_taxonomy_from_github(status_fn=None):
 
         # Cache the results
         try:
+            # Ensure cache directory exists
+            os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
             cache_data = {
                 'cached_at': datetime.now().isoformat(),
                 'source': TAXONOMY_URL,
