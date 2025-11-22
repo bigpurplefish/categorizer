@@ -459,7 +459,7 @@ def enhance_product_with_claude(
 
         # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS + LIFESTYLE IMAGE PROMPTS ==========
         if status_fn:
-            log_and_status(status_fn, f"  🤖 Assigning taxonomy and calculating shipping weight for: {title[:50]}...")
+            log_and_status(status_fn, f"  🤖 Analyzing product and assigning taxonomy for: {title[:50]}...")
             if variants_needing_images:
                 log_and_status(status_fn, f"  🖼️  Generating lifestyle image prompts for {len(variants_needing_images)} variant(s)...")
 

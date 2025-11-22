@@ -1192,6 +1192,33 @@ def build_gui():
     )
     clear_btn.pack(side="left", padx=5)
 
+    # Real-time window geometry tracking
+    resize_timer = None
+
+    def save_window_geometry():
+        """Save current window geometry to config."""
+        try:
+            cfg["WINDOW_GEOMETRY"] = app.geometry()
+            save_config(cfg)
+            logging.debug(f"Saved window geometry: {cfg['WINDOW_GEOMETRY']}")
+        except Exception as e:
+            logging.warning(f"Failed to save window geometry: {e}")
+
+    def schedule_geometry_save():
+        """Debounce geometry saves to avoid excessive disk writes (500ms delay)."""
+        global resize_timer
+        if resize_timer:
+            app.after_cancel(resize_timer)
+        resize_timer = app.after(500, save_window_geometry)
+
+    def on_configure(event):
+        """Called when window is resized or moved."""
+        if event.widget == app:
+            schedule_geometry_save()
+
+    # Bind to window resize/move events
+    app.bind("<Configure>", on_configure)
+
     # Save window geometry on close
     def on_close():
         cfg["WINDOW_GEOMETRY"] = app.geometry()

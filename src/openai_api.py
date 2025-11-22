@@ -327,7 +327,7 @@ def enhance_product_with_openai(
 
         # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS ==========
         if status_fn:
-            log_and_status(status_fn, f"  🤖 Assigning taxonomy and calculating shipping weight for: {title[:50]}...")
+            log_and_status(status_fn, f"  🤖 Analyzing product and assigning taxonomy for: {title[:50]}...")
 
         logging.info("=" * 80)
         logging.info(f"OPENAI API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS)")
