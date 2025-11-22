@@ -412,8 +412,10 @@ def generate_taxonomy_mapping_with_ai(
 
             if model.startswith("gpt-5"):
                 # GPT-5: uses max_completion_tokens, temperature must be 1 (default)
-                api_params["max_completion_tokens"] = 16000
+                # Use higher limit for taxonomy mapping (114 categories with reasoning = ~30K tokens)
+                api_params["max_completion_tokens"] = 64000
                 # Note: GPT-5 only supports temperature=1 (default), so we omit it
+                # GPT-5 supports up to 128K output tokens, but we use 64K to be conservative
             else:
                 # GPT-4 and earlier: use max_tokens and temperature=0 for deterministic output
                 api_params["max_tokens"] = 16000
@@ -421,16 +423,44 @@ def generate_taxonomy_mapping_with_ai(
 
             response = client.chat.completions.create(**api_params)
 
-            result_text = response.choices[0].message.content.strip()
+            # Extract response content with detailed error handling
+            choice = response.choices[0]
+            message = choice.message
+
+            # Log response details for debugging
+            logging.debug(f"Response choice: {choice}")
+            logging.debug(f"Finish reason: {choice.finish_reason}")
+            logging.debug(f"Message content type: {type(message.content)}")
+            logging.debug(f"Message content is None: {message.content is None}")
+
+            result_text = message.content.strip() if message.content else ""
 
             # Calculate cost (approximate)
             input_tokens = response.usage.prompt_tokens
             output_tokens = response.usage.completion_tokens
+
+            # Check for empty response
+            if not result_text:
+                logging.error(f"❌ OpenAI returned empty response!")
+                logging.error(f"Finish reason: {choice.finish_reason}")
+                logging.error(f"Response ID: {response.id}")
+                logging.error(f"Output tokens: {output_tokens}")
+                if hasattr(message, 'refusal') and message.refusal:
+                    logging.error(f"Refusal: {message.refusal}")
+                raise ValueError(f"OpenAI returned empty response (finish_reason: {choice.finish_reason})")
+
+            # Check if response was truncated due to token limit
+            if choice.finish_reason == "length":
+                logging.warning(f"⚠️  Response may be truncated (finish_reason=length)")
+                logging.warning(f"Output tokens: {output_tokens}, likely hit max_completion_tokens limit")
+                logging.warning(f"Consider increasing max_completion_tokens for complete response")
             cost = (input_tokens * 0.0025 / 1000) + (output_tokens * 0.01 / 1000)  # GPT-4o pricing
 
             logging.info(f"✅ OpenAI API call successful")
             logging.info(f"Token usage - Input: {input_tokens}, Output: {output_tokens}")
             logging.info(f"Cost: ${cost:.4f}")
+            logging.info(f"Finish reason: {choice.finish_reason}")
+            logging.info(f"Response length: {len(result_text)} characters")
 
         else:
             raise ValueError(f"Unknown AI provider: {provider}")
