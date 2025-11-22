@@ -181,15 +181,35 @@ def save_mapping_cache(cache: Dict):
 
     Args:
         cache: Mapping cache dictionary
+
+    Raises:
+        Exception: If cache save fails for any reason
     """
     try:
         # Ensure cache directory exists
-        os.makedirs(os.path.dirname(MAPPING_CACHE_FILE), exist_ok=True)
+        cache_dir = os.path.dirname(MAPPING_CACHE_FILE)
+        os.makedirs(cache_dir, exist_ok=True)
+        logging.debug(f"Cache directory exists: {cache_dir}")
+
+        # Write cache to file
+        logging.debug(f"Writing cache with {len(cache.get('mappings', {}))} mappings to {MAPPING_CACHE_FILE}")
         with open(MAPPING_CACHE_FILE, 'w', encoding='utf-8') as f:
             json.dump(cache, f, indent=2, ensure_ascii=False)
-        logging.info(f"Saved taxonomy mapping cache to {MAPPING_CACHE_FILE}")
+
+        # Validate file was created and has content
+        if not os.path.exists(MAPPING_CACHE_FILE):
+            raise IOError(f"Cache file was not created at {MAPPING_CACHE_FILE}")
+
+        file_size = os.path.getsize(MAPPING_CACHE_FILE)
+        if file_size == 0:
+            raise IOError(f"Cache file is empty: {MAPPING_CACHE_FILE}")
+
+        logging.info(f"✅ Saved taxonomy mapping cache to {MAPPING_CACHE_FILE} ({file_size} bytes)")
+
     except Exception as e:
-        logging.error(f"Failed to save mapping cache: {e}")
+        logging.error(f"❌ Failed to save mapping cache: {e}")
+        # Re-raise to ensure caller knows about the failure
+        raise
 
 
 def needs_remapping(
@@ -412,21 +432,63 @@ def generate_taxonomy_mapping_with_ai(
         else:
             raise ValueError(f"Unknown AI provider: {provider}")
 
-        # Parse JSON response
-        # Remove markdown code blocks if present
-        if result_text.startswith("```"):
-            lines = result_text.split('\n')
-            result_text = '\n'.join(lines[1:-1])
+        # Log raw response for debugging (first 500 chars)
+        logging.debug(f"Raw AI response (first 500 chars): {result_text[:500]}")
+        logging.debug(f"Response length: {len(result_text)} characters")
 
-        mappings = json.loads(result_text)
+        # Parse JSON response
+        try:
+            # Remove markdown code blocks if present
+            cleaned_text = result_text
+            if result_text.startswith("```"):
+                logging.debug("Removing markdown code blocks from response")
+                lines = result_text.split('\n')
+                cleaned_text = '\n'.join(lines[1:-1])
+
+            # Attempt JSON parse
+            logging.debug("Parsing JSON response...")
+            mappings = json.loads(cleaned_text)
+
+            if not isinstance(mappings, dict):
+                raise ValueError(f"Expected dict, got {type(mappings).__name__}")
+
+            logging.info(f"✅ Successfully parsed {len(mappings)} mappings from AI response")
+
+        except json.JSONDecodeError as e:
+            logging.error(f"❌ Failed to parse AI response as JSON: {e}")
+            logging.error(f"Response text (first 1000 chars): {result_text[:1000]}")
+            logging.error(f"Response text (last 500 chars): {result_text[-500:]}")
+            raise ValueError(f"AI returned invalid JSON: {e}") from e
 
         # Validate mappings structure
+        logging.debug("Validating mapping structure...")
         valid_mappings = {}
+        invalid_count = 0
+
         for category, mapping in mappings.items():
-            if isinstance(mapping, dict) and all(key in mapping for key in ['shopify_category', 'shopify_id', 'confidence']):
-                valid_mappings[category] = mapping
-            else:
-                logging.warning(f"Invalid mapping structure for {category}: {mapping}")
+            required_keys = ['shopify_category', 'shopify_id', 'confidence']
+
+            if not isinstance(mapping, dict):
+                logging.warning(f"❌ Invalid mapping for '{category}': not a dict (got {type(mapping).__name__})")
+                invalid_count += 1
+                continue
+
+            missing_keys = [key for key in required_keys if key not in mapping]
+            if missing_keys:
+                logging.warning(f"❌ Invalid mapping for '{category}': missing keys {missing_keys}")
+                invalid_count += 1
+                continue
+
+            # Valid mapping
+            valid_mappings[category] = mapping
+            logging.debug(f"✅ Valid mapping: {category} -> {mapping.get('shopify_category')} (confidence: {mapping.get('confidence')})")
+
+        # Report validation results
+        if invalid_count > 0:
+            logging.warning(f"⚠️  {invalid_count} mappings failed validation")
+
+        if len(valid_mappings) == 0:
+            raise ValueError("No valid mappings found in AI response - all mappings failed validation")
 
         if status_fn:
             log_and_status(status_fn, f"✅ AI mapped {len(valid_mappings)}/{len(our_categories)} categories")
@@ -446,12 +508,9 @@ def generate_taxonomy_mapping_with_ai(
 
         return valid_mappings
 
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to parse AI response as JSON: {e}")
-        logging.error(f"Response text: {result_text[:500]}...")
-        raise
     except Exception as e:
-        logging.error(f"AI taxonomy mapping failed: {e}")
+        logging.error(f"❌ AI taxonomy mapping failed: {e}")
+        logging.exception("Full traceback:")
         raise
 
 
@@ -530,6 +589,15 @@ def get_or_create_taxonomy_mapping(
         status_fn
     )
 
+    # Validate mappings were generated
+    if not mappings:
+        raise ValueError("AI mapping generation returned empty mappings")
+
+    if len(mappings) == 0:
+        raise ValueError("AI mapping generation returned zero mappings")
+
+    logging.info(f"Generated {len(mappings)} taxonomy mappings")
+
     # Create new cache
     new_cache = {
         'version': '1.0',
@@ -543,8 +611,25 @@ def get_or_create_taxonomy_mapping(
         'mappings': mappings
     }
 
-    # Save cache
+    # Save cache (will raise exception if save fails)
     save_mapping_cache(new_cache)
+
+    # Verify cache file was created
+    if not os.path.exists(MAPPING_CACHE_FILE):
+        raise IOError(f"Cache file was not created after save: {MAPPING_CACHE_FILE}")
+
+    # Verify we can load it back
+    verification_cache = load_mapping_cache()
+    if not verification_cache:
+        raise IOError(f"Cache file was created but cannot be loaded: {MAPPING_CACHE_FILE}")
+
+    if len(verification_cache.get('mappings', {})) != len(mappings):
+        raise ValueError(
+            f"Cache verification failed: expected {len(mappings)} mappings, "
+            f"but loaded {len(verification_cache.get('mappings', {}))}"
+        )
+
+    logging.info(f"✅ Cache verified: {len(mappings)} mappings saved and loaded successfully")
 
     return mappings
 

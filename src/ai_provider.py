@@ -247,8 +247,8 @@ def batch_enhance_products(
     products: List[Dict],
     cfg: Dict,
     status_fn,
-    taxonomy_path: str = "/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md",
-    voice_tone_path: str = "docs/VOICE_AND_TONE_GUIDELINES.md",
+    taxonomy_path: str = None,
+    voice_tone_path: str = None,
     force_refresh_cache: bool = False,
     force_refresh_taxonomy: bool = False
 ) -> List[Dict]:
@@ -293,6 +293,17 @@ def batch_enhance_products(
         error_msg = f"{provider_name} API key not configured. Add your API key in Settings dialog."
         log_and_status(status_fn, f"❌ {error_msg}", "error")
         raise ValueError(error_msg)
+
+    # Get document paths from config if not provided
+    if taxonomy_path is None:
+        taxonomy_path = cfg.get("TAXONOMY_DOC_PATH")
+        if not taxonomy_path:
+            error_msg = "TAXONOMY_DOC_PATH not configured"
+            log_and_status(status_fn, f"❌ {error_msg}", "error")
+            raise ValueError(error_msg)
+
+    if voice_tone_path is None:
+        voice_tone_path = cfg.get("VOICE_TONE_DOC_PATH", "docs/VOICE_AND_TONE_GUIDELINES.md")
 
     # Load taxonomy and voice/tone documents
     log_and_status(status_fn, f"Loading taxonomy document: {taxonomy_path}")
@@ -368,22 +379,46 @@ def batch_enhance_products(
             log_and_status(status_fn, f"✅ Loaded {len(shopify_categories)} Shopify categories")
 
             # Get or create intelligent taxonomy mapping (cached, only regenerates if taxonomies changed)
-            taxonomy_mappings = get_or_create_taxonomy_mapping(
-                our_taxonomy_path=taxonomy_path,
-                shopify_categories=shopify_categories,
-                api_key=api_key,
-                provider=provider,
-                model=model,
-                status_fn=status_fn,
-                force_remap=force_refresh_taxonomy
-            )
+            try:
+                taxonomy_mappings = get_or_create_taxonomy_mapping(
+                    our_taxonomy_path=taxonomy_path,
+                    shopify_categories=shopify_categories,
+                    api_key=api_key,
+                    provider=provider,
+                    model=model,
+                    status_fn=status_fn,
+                    force_remap=force_refresh_taxonomy
+                )
 
-            log_and_status(status_fn, f"✅ Taxonomy mapping ready ({len(taxonomy_mappings)} categories)")
-            log_and_status(status_fn, f"")
+                if taxonomy_mappings and len(taxonomy_mappings) > 0:
+                    log_and_status(status_fn, f"✅ Taxonomy mapping ready ({len(taxonomy_mappings)} categories)")
+                    log_and_status(status_fn, f"")
+                else:
+                    error_msg = "❌ Taxonomy mapping generation returned empty results"
+                    logging.error(error_msg)
+                    log_and_status(status_fn, error_msg)
+                    log_and_status(status_fn, "⚠️  Shopify category IDs will be null - check logs for details")
+                    taxonomy_mappings = None
+
+            except Exception as e:
+                error_msg = f"❌ Failed to generate taxonomy mapping: {e}"
+                logging.error(error_msg)
+                logging.exception("Taxonomy mapping error details:")
+                log_and_status(status_fn, error_msg)
+                log_and_status(status_fn, "⚠️  Shopify category IDs will be null - products will not be matched to Shopify categories")
+                taxonomy_mappings = None
+
         else:
-            logging.warning("Failed to load Shopify taxonomy - category matching will be disabled")
+            logging.error("Failed to load Shopify taxonomy from GitHub - category matching will be disabled")
+            log_and_status(status_fn, "❌ Failed to load Shopify taxonomy - category matching disabled")
+            taxonomy_mappings = None
+
     except Exception as e:
-        logging.warning(f"Failed to initialize taxonomy mapping: {e}")
+        error_msg = f"❌ Failed to initialize Shopify taxonomy: {e}"
+        logging.error(error_msg)
+        logging.exception("Shopify taxonomy initialization error:")
+        log_and_status(status_fn, error_msg)
+        log_and_status(status_fn, "⚠️  Shopify category matching will be disabled")
         taxonomy_mappings = None
 
     # Load cache
