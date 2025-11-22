@@ -19,7 +19,7 @@ import queue
 from tkinter import filedialog, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from ttkbootstrap.tooltip import ToolTip
+from ttkbootstrap.widgets import ToolTip
 
 # Import src modules
 try:
@@ -1206,7 +1206,7 @@ def build_gui():
 
     def schedule_geometry_save():
         """Debounce geometry saves to avoid excessive disk writes (500ms delay)."""
-        global resize_timer
+        nonlocal resize_timer
         if resize_timer:
             app.after_cancel(resize_timer)
         resize_timer = app.after(500, save_window_geometry)
