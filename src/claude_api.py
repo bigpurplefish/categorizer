@@ -449,22 +449,14 @@ def enhance_product_with_claude(
 
         # ========== CHECK FOR VARIANTS NEEDING IMAGES ==========
         # Removed: lifestyle image prompt generation moved to upscaler project
+        # No image prompt generation in this module
 
-        if variants_needing_images:
-            logging.info(f"Found {len(variants_needing_images)} variant(s) needing lifestyle images")
-            for variant_id, info in variants_needing_images.items():
-                logging.info(f"  - {variant_id}: needs {info['images_needed']} images (has {info['existing_count']}/5)")
-        else:
-            logging.info("All variants have sufficient images (5+), no lifestyle image prompts needed")
-
-        # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS + LIFESTYLE IMAGE PROMPTS ==========
+        # ========== STEP 1: TAXONOMY ASSIGNMENT + WEIGHT ESTIMATION + PURCHASE OPTIONS ==========
         if status_fn:
             log_and_status(status_fn, f"  🤖 Analyzing product and assigning taxonomy for: {title[:50]}...")
-            if variants_needing_images:
-                log_and_status(status_fn, f"  🖼️  Generating lifestyle image prompts for {len(variants_needing_images)} variant(s)...")
 
         logging.info("=" * 80)
-        logging.info(f"CLAUDE API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS{' + LIFESTYLE IMAGE PROMPTS' if variants_needing_images else ''})")
+        logging.info(f"CLAUDE API CALL #1: ENHANCED TAXONOMY (TAXONOMY + WEIGHT + PURCHASE OPTIONS)")
         logging.info(f"Product: {title}")
         logging.info(f"Model: {model}")
         logging.info("=" * 80)
