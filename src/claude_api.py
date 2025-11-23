@@ -897,6 +897,47 @@ def enhance_product_with_claude(
         logging.error(f"Error Type: {type(e).__name__}")
         logging.error(f"Error Details: {str(e)}")
 
+        # Check if it's a rate limit error and provide user-friendly message
+        if anthropic and isinstance(e, anthropic.RateLimitError):
+            logging.error("=" * 80)
+            logging.error("⏱️  RATE LIMIT EXCEEDED")
+            logging.error("=" * 80)
+            logging.error("")
+            logging.error("You've exceeded Claude's API rate limits.")
+            logging.error("")
+            logging.error("💡 SOLUTIONS:")
+            logging.error("")
+            logging.error("1. ⏰ WAIT 60 SECONDS and try again")
+            logging.error("   Rate limits reset after 1 minute")
+            logging.error("")
+            logging.error("2. ♻️  DISABLE 'Force Refresh Taxonomy'")
+            logging.error("   You just generated the taxonomy mapping - use the cached version!")
+            logging.error("   Uncheck 'Force Refresh Taxonomy' in the GUI and run again")
+            logging.error("")
+            logging.error("3. 🔄 SWITCH TO GPT-5")
+            logging.error("   OpenAI has different rate limits")
+            logging.error("")
+            logging.error("4. 📈 UPGRADE YOUR CLAUDE API TIER")
+            logging.error("   Contact Anthropic sales: https://www.anthropic.com/contact-sales")
+            logging.error("")
+            logging.error("=" * 80)
+
+            # Provide user-friendly message via status function
+            if status_fn:
+                log_and_status(status_fn, "")
+                log_and_status(status_fn, "⏱️  Rate Limit Exceeded - Claude API")
+                log_and_status(status_fn, "")
+                log_and_status(status_fn, "💡 Quick Fix: Wait 60 seconds OR disable 'Force Refresh Taxonomy'")
+                log_and_status(status_fn, "   (You already have a cached taxonomy mapping)")
+                log_and_status(status_fn, "")
+
+            # Raise with user-friendly message
+            raise Exception(
+                "Claude API rate limit exceeded. "
+                "Wait 60 seconds or disable 'Force Refresh Taxonomy' to use cached mapping. "
+                "See logs for details."
+            ) from e
+
         # Check if it's an Anthropic API error
         if anthropic and isinstance(e, anthropic.APIError):
             logging.error("This is an Anthropic API error")
