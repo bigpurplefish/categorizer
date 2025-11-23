@@ -321,11 +321,17 @@ OUTPUT FORMAT (valid JSON only, no markdown):
   ...
 }}
 
-IMPORTANT:
+CRITICAL REQUIREMENTS:
 - Return ONLY valid JSON (no markdown, no code blocks, no extra text)
 - Map ALL {len(our_categories)} of our categories
-- Use the exact Shopify category IDs provided above
-- Be specific - don't use generic top-level categories when specific ones exist
+- ⚠️  ONLY use Shopify category IDs that appear in the list above
+- ⚠️  DO NOT fabricate or guess category IDs - they must exist in the provided list
+- ⚠️  DO NOT create IDs by pattern matching (e.g., hg-5-4-9) - validate they exist!
+- Be specific - prefer deeper category levels when available
+- If uncertain about an ID, verify it exists in the Shopify list before using it
+
+VALIDATION:
+Your response will be validated against the Shopify taxonomy. Any hallucinated IDs that don't exist will cause mapping failures.
 
 Begin mapping:"""
 
@@ -494,9 +500,15 @@ def generate_taxonomy_mapping_with_ai(
             raise ValueError(f"AI returned invalid JSON: {e}") from e
 
         # Validate mappings structure
-        logging.debug("Validating mapping structure...")
+        logging.debug("Validating mapping structure and Shopify IDs...")
+
+        # Create set of valid Shopify taxonomy IDs for quick lookup
+        valid_shopify_ids = {cat.get('id') for cat in shopify_categories if cat.get('id')}
+        logging.debug(f"Loaded {len(valid_shopify_ids)} valid Shopify category IDs for validation")
+
         valid_mappings = {}
         invalid_count = 0
+        hallucinated_ids = 0
 
         for category, mapping in mappings.items():
             required_keys = ['shopify_category', 'shopify_id', 'confidence']
@@ -512,6 +524,14 @@ def generate_taxonomy_mapping_with_ai(
                 invalid_count += 1
                 continue
 
+            # Validate that the Shopify ID actually exists in the taxonomy
+            shopify_id = mapping.get('shopify_id')
+            if shopify_id and shopify_id != "None" and shopify_id not in valid_shopify_ids:
+                logging.warning(f"❌ Hallucinated ID for '{category}': {mapping.get('shopify_category')} ({shopify_id}) DOES NOT EXIST in Shopify taxonomy!")
+                invalid_count += 1
+                hallucinated_ids += 1
+                continue
+
             # Valid mapping
             valid_mappings[category] = mapping
             logging.debug(f"✅ Valid mapping: {category} -> {mapping.get('shopify_category')} (confidence: {mapping.get('confidence')})")
@@ -519,6 +539,8 @@ def generate_taxonomy_mapping_with_ai(
         # Report validation results
         if invalid_count > 0:
             logging.warning(f"⚠️  {invalid_count} mappings failed validation")
+            if hallucinated_ids > 0:
+                logging.error(f"🚨 {hallucinated_ids} HALLUCINATED IDs detected - these categories DO NOT EXIST in Shopify!")
 
         if len(valid_mappings) == 0:
             raise ValueError("No valid mappings found in AI response - all mappings failed validation")
