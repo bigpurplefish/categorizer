@@ -299,15 +299,31 @@ def create_ai_mapping_prompt(
 
 INSTRUCTIONS:
 
-For each of our internal taxonomy paths, find the BEST matching Shopify category at the LOWEST (most specific) level possible. Return your mappings as a JSON object.
+For each of our internal taxonomy paths, find the BEST matching Shopify category using a BOTTOM-UP search strategy.
 
-MAPPING RULES:
-1. Match at the lowest/most specific level (prefer "A > B > C > D" over "A > B")
-2. Assign a confidence level: "high", "medium", or "low"
-   - "high": Direct semantic match at specific level
-   - "medium": Related but not exact match
-   - "low": Best guess but uncertain
-3. If no good match exists, use "shopify_category": null and explain why
+MAPPING STRATEGY (CRITICAL):
+1. **START WITH THE RIGHTMOST/MOST SPECIFIC TERM** (the leaf category)
+   Example: For "Landscape and Construction > Aggregates > Sand"
+   - Extract the specific term: "Sand"
+   - Search Shopify taxonomy for exact or semantic matches to "Sand"
+   - Found: "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand" ✅
+
+2. **Validate the match makes semantic sense**
+   - Does the Shopify category path align with the product type?
+   - Is this the most specific level available?
+
+3. **Only use broader categories if no specific match exists**
+   - If "Sand" had no specific match, then consider "Aggregates" or "Landscape and Construction"
+
+4. **Assign confidence level:**
+   - "high": Exact term match at deepest level (e.g., "Sand" → "...> Sand")
+   - "medium": Semantic match but not exact term
+   - "low": Had to use broader/generic category
+
+EXAMPLES:
+- "Landscape and Construction > Aggregates > Sand" → Search for "Sand" → "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand" (high)
+- "Landscape and Construction > Aggregates > Soil" → Search for "Soil" → "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Soil" (high)
+- "Pet Supplies > Dogs > Collars" → Search for "Collars" → "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Collars & Leashes > Dog Collars" (high)
 
 OUTPUT FORMAT (valid JSON only, no markdown):
 
