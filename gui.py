@@ -424,8 +424,65 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             log_and_status(status, "")
 
         if len(products) == 0:
-            log_and_status(status, "No products to process!")
+            log_and_status(status, "No new products to process.")
             log_and_status(status, "All products in range have already been processed.")
+
+            # BACKFILL: Even with no new products, check if skipped products need Shopify category backfill
+            if processing_mode == "skip" and existing_products:
+                mapping_cache = load_mapping_cache()
+                if mapping_cache and mapping_cache.get('mappings'):
+                    taxonomy_mappings = mapping_cache['mappings']
+                    backfill_count = 0
+
+                    for title, product in existing_products.items():
+                        # Check if product needs backfill
+                        if (product.get('shopify_category_id') is None and
+                            product.get('product_type') and product.get('tags')):
+
+                            # Build category path from existing taxonomy
+                            dept = product.get('product_type', '')
+                            tags = product.get('tags', [])
+                            cat = tags[0] if len(tags) > 0 else ''
+                            subcat = tags[1] if len(tags) > 1 else ''
+
+                            if dept and cat:
+                                if subcat:
+                                    category_path = f"{dept} > {cat} > {subcat}"
+                                else:
+                                    category_path = f"{dept} > {cat}"
+
+                                # Check if mapping exists
+                                if category_path in taxonomy_mappings:
+                                    mapping = taxonomy_mappings[category_path]
+                                    if mapping.get('shopify_id'):
+                                        product['shopify_category_id'] = mapping['shopify_id']
+                                        product['shopify_category'] = mapping.get('shopify_category')
+                                        backfill_count += 1
+                                        logging.info(f"✅ Backfilled Shopify category for '{title}': {category_path} -> {mapping.get('shopify_category')}")
+
+                    if backfill_count > 0:
+                        log_and_status(status, f"✅ Backfilled Shopify category for {backfill_count} product(s)")
+
+                        # Save the updated products
+                        all_enhanced = list(existing_products.values())
+                        log_and_status(status, f"Saving {len(all_enhanced)} products to: {output_file}")
+                        try:
+                            with open(output_file, 'w', encoding='utf-8') as f:
+                                json.dump(all_enhanced, f, indent=2, ensure_ascii=False)
+                            log_and_status(status, f"✅ Successfully saved {len(all_enhanced)} products")
+                        except Exception as e:
+                            error_msg = f"Failed to save output file: {e}"
+                            log_and_status(status, error_msg, "error")
+                            app.after(0, lambda: messagebox.showerror("Save Error", error_msg))
+                            return
+
+                        app.after(0, lambda: messagebox.showinfo(
+                            "Backfill Complete",
+                            f"Backfilled Shopify category for {backfill_count} product(s).\n\n"
+                            f"Output saved to:\n{output_file}"
+                        ))
+                        return
+
             return
 
         log_and_status(status, f"Processing {len(products)} products...")
