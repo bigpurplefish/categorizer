@@ -500,6 +500,28 @@ def batch_enhance_products(
                 enhanced_product['shopify_category_id'] = cached_data.get('shopify_category_id', None)
                 enhanced_product['shopify_category'] = cached_data.get('shopify_category', None)
 
+                # BACKFILL: If Shopify category is missing but mapping now exists, apply it
+                if (enhanced_product.get('shopify_category_id') is None and
+                    taxonomy_mappings and
+                    cached_data.get('department') and cached_data.get('category')):
+
+                    # Build category path
+                    dept = cached_data['department']
+                    cat = cached_data['category']
+                    subcat = cached_data.get('subcategory', '')
+                    if subcat:
+                        category_path = f"{dept} > {cat} > {subcat}"
+                    else:
+                        category_path = f"{dept} > {cat}"
+
+                    # Check if mapping exists for this category
+                    if category_path in taxonomy_mappings:
+                        mapping = taxonomy_mappings[category_path]
+                        if mapping.get('shopify_id'):
+                            enhanced_product['shopify_category_id'] = mapping['shopify_id']
+                            enhanced_product['shopify_category'] = mapping.get('shopify_category')
+                            logging.info(f"✅ Backfilled Shopify category for cached product: {category_path} -> {mapping.get('shopify_category')}")
+
                 # Collect category for input-scoped taxonomy refresh
                 department = cached_data.get('department', '')
                 category = cached_data.get('category', '')
