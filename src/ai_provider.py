@@ -496,8 +496,9 @@ def batch_enhance_products(
                 enhanced_product['tags'] = tags
                 enhanced_product['body_html'] = cached_data.get('enhanced_description', product.get('body_html', ''))
 
-                # Restore Shopify category ID from cache
+                # Restore Shopify category ID and name from cache
                 enhanced_product['shopify_category_id'] = cached_data.get('shopify_category_id', None)
+                enhanced_product['shopify_category'] = cached_data.get('shopify_category', None)
 
                 # Collect category for input-scoped taxonomy refresh
                 department = cached_data.get('department', '')

@@ -753,6 +753,16 @@ def enhance_product_with_openai(
         enhanced_product = product.copy()
         enhanced_product['product_type'] = department
 
+        # Remove fields we want to reorder (shopify fields, tags, metafields)
+        # This ensures we can insert them in the exact order we want
+        for field in ['shopify_category_id', 'shopify_category', 'tags', 'metafields']:
+            if field in enhanced_product:
+                del enhanced_product[field]
+
+        # Insert shopify_category fields in correct position (right after product_type)
+        enhanced_product['shopify_category_id'] = None
+        enhanced_product['shopify_category'] = None
+
         # Build tags array: category + subcategory (if exists)
         tags = [category]
         if subcategory:
@@ -894,8 +904,7 @@ def enhance_product_with_openai(
                 enhanced_product['shopify_category'] = None
         else:
             logging.info("ℹ️  Taxonomy mappings not available - skipping Shopify category matching")
-            enhanced_product['shopify_category_id'] = None
-            enhanced_product['shopify_category'] = None
+            # Fields already initialized to None earlier, no need to set again
 
         logging.info("=" * 80)
         logging.info(f"✅ PRODUCT ENHANCEMENT COMPLETE: {title}")

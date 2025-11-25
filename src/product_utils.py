@@ -73,7 +73,7 @@ def reorder_product_fields(product: Dict) -> Dict:
     Reorder product fields according to GraphQL output requirements.
 
     Field order:
-    1. Single-value keys (title, descriptionHtml, vendor, status, product_type, shopify_category_id)
+    1. Single-value keys (title, descriptionHtml, vendor, status, product_type, shopify_category_id, shopify_category)
     2. Array keys in order: tags, options, metafields, variants, images, media
 
     Args:
@@ -89,7 +89,8 @@ def reorder_product_fields(product: Dict) -> Dict:
         'vendor',
         'status',
         'product_type',
-        'shopify_category_id'
+        'shopify_category_id',
+        'shopify_category'
     ]
 
     array_fields = [
