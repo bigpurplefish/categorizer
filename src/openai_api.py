@@ -871,34 +871,39 @@ def enhance_product_with_openai(
             try:
                 from .taxonomy_mapper import lookup_shopify_category
 
-                shopify_category_id = lookup_shopify_category(
+                shopify_mapping = lookup_shopify_category(
                     department,
                     category,
                     subcategory,
                     taxonomy_mappings
                 )
 
-                if shopify_category_id:
+                if shopify_mapping:
                     logging.info(f"✅ Matched to Shopify category via intelligent mapping")
+                    enhanced_product['shopify_category_id'] = shopify_mapping.get('shopify_id')
+                    enhanced_product['shopify_category'] = shopify_mapping.get('shopify_category')
+                    logging.info(f"Stored Shopify category: {shopify_mapping.get('shopify_category')}")
+                    logging.info(f"Stored Shopify category ID: {shopify_mapping.get('shopify_id')}")
                 else:
                     logging.warning(f"⚠️  No Shopify category mapping found for: {department} > {category} > {subcategory}")
+                    enhanced_product['shopify_category_id'] = None
+                    enhanced_product['shopify_category'] = None
             except Exception as e:
                 logging.warning(f"Failed to lookup Shopify category: {e}")
-                shopify_category_id = None
+                enhanced_product['shopify_category_id'] = None
+                enhanced_product['shopify_category'] = None
         else:
             logging.info("ℹ️  Taxonomy mappings not available - skipping Shopify category matching")
-
-        # Store Shopify category ID in product
-        if shopify_category_id:
-            enhanced_product['shopify_category_id'] = shopify_category_id
-            logging.info(f"Stored Shopify category ID: {shopify_category_id}")
-        else:
             enhanced_product['shopify_category_id'] = None
+            enhanced_product['shopify_category'] = None
 
         logging.info("=" * 80)
         logging.info(f"✅ PRODUCT ENHANCEMENT COMPLETE: {title}")
         logging.info(f"Custom taxonomy: {department} > {category} > {subcategory}")
-        logging.info(f"Shopify category ID: {enhanced_product.get('shopify_category_id', 'None')}")
+        shopify_cat = enhanced_product.get('shopify_category', 'None')
+        shopify_id = enhanced_product.get('shopify_category_id', 'None')
+        logging.info(f"Shopify category: {shopify_cat}")
+        logging.info(f"Shopify category ID: {shopify_id}")
         logging.info(f"Description length: {len(enhanced_description)} characters")
         logging.info("=" * 80)
 

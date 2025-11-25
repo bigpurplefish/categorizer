@@ -579,17 +579,20 @@ def batch_enhance_products(
                         )
                         save_mapping_cache(updated_cache)
 
-                        # Assign Shopify category ID
+                        # Assign Shopify category ID and name
                         enhanced_product['shopify_category_id'] = shopify_mapping.get('shopify_id')
+                        enhanced_product['shopify_category'] = shopify_mapping.get('shopify_category')
                         logging.info(f"  ✅ Mapped to: {shopify_mapping.get('shopify_category')}")
 
                     except Exception as e:
                         logging.error(f"Failed to generate Shopify mapping for {category_path}: {e}")
                         enhanced_product['shopify_category_id'] = None
+                        enhanced_product['shopify_category'] = None
                 else:
                     # Use cached mapping
                     shopify_mapping = taxonomy_mappings.get(category_path, {})
                     enhanced_product['shopify_category_id'] = shopify_mapping.get('shopify_id')
+                    enhanced_product['shopify_category'] = shopify_mapping.get('shopify_category')
                     if shopify_mapping.get('shopify_id'):
                         logging.debug(f"  ✅ Cache hit: {category_path} -> {shopify_mapping.get('shopify_category')}")
 

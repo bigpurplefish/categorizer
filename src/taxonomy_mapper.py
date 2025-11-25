@@ -1389,9 +1389,9 @@ def lookup_shopify_category(
     category: str,
     subcategory: str,
     mappings: Dict
-) -> Optional[str]:
+) -> Optional[Dict[str, str]]:
     """
-    Look up Shopify category ID for our internal taxonomy path.
+    Look up Shopify category ID and name for our internal taxonomy path.
 
     Tries multiple lookup strategies:
     1. Full path: Department > Category > Subcategory
@@ -1405,7 +1405,7 @@ def lookup_shopify_category(
         mappings: Taxonomy mappings dictionary
 
     Returns:
-        Shopify category GID or None if no mapping found
+        Dict with 'shopify_id' and 'shopify_category' keys, or None if no mapping found
     """
     # Try full path first
     if subcategory:
@@ -1414,7 +1414,10 @@ def lookup_shopify_category(
             mapping = mappings[full_path]
             if mapping.get('shopify_id'):
                 logging.debug(f"Found mapping for full path: {full_path} -> {mapping['shopify_category']}")
-                return mapping['shopify_id']
+                return {
+                    'shopify_id': mapping['shopify_id'],
+                    'shopify_category': mapping.get('shopify_category', 'Unknown')
+                }
 
     # Try department > category
     cat_path = f"{department} > {category}"
@@ -1422,14 +1425,20 @@ def lookup_shopify_category(
         mapping = mappings[cat_path]
         if mapping.get('shopify_id'):
             logging.debug(f"Found mapping for category path: {cat_path} -> {mapping['shopify_category']}")
-            return mapping['shopify_id']
+            return {
+                'shopify_id': mapping['shopify_id'],
+                'shopify_category': mapping.get('shopify_category', 'Unknown')
+            }
 
     # Try just department (fallback)
     if department in mappings:
         mapping = mappings[department]
         if mapping.get('shopify_id'):
             logging.debug(f"Found mapping for department: {department} -> {mapping['shopify_category']}")
-            return mapping['shopify_id']
+            return {
+                'shopify_id': mapping['shopify_id'],
+                'shopify_category': mapping.get('shopify_category', 'Unknown')
+            }
 
     logging.warning(f"No Shopify category mapping found for: {department} > {category} > {subcategory}")
     return None
