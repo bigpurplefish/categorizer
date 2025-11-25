@@ -189,6 +189,31 @@ The GUI provides flexible processing controls for batch operations:
 3. **Process specific range**: Set Start and End to target specific products
 4. **Re-process everything**: Set mode to "Overwrite", leave range blank
 
+**Force Refresh Options:**
+
+The GUI provides two cache refresh options for advanced use cases:
+
+- **Force Refresh AI Cache**: Re-processes all products with AI even if they're already cached. Use when you've changed voice/tone guidelines or taxonomy definitions and want to regenerate all descriptions and categories.
+
+- **Force Refresh Taxonomy Mapping** (Input-Scoped): Regenerates Shopify category mappings ONLY for the categories detected in your current input file.
+  - **How it works**: During processing, the system collects all unique category paths assigned by the AI. After processing completes, it regenerates mappings for just those specific categories.
+  - **Automatic mode**: If taxonomy mapping cache doesn't exist or has missing categories, the system automatically maps only the categories from your input file (no need to enable Force Refresh).
+  - **Force mode**: When enabled, forces regeneration of mappings even if they already exist in cache (useful for fixing incorrect mappings).
+  - **Cost savings**: Only maps 5-10 categories from your input file instead of all 114 categories (~80-95% cost savings vs full refresh).
+  - **Example**: Input file has products spanning 7 categories → Only those 7 categories get mapped (~$0.01 vs $0.10 for full remap).
+  - **Note**: Not supported in batch mode (standard API mode only).
+
+**When to Use Force Refresh:**
+- ✅ Testing different AI models for taxonomy mapping quality
+- ✅ Fixing incorrect Shopify category assignments for specific product types
+- ✅ After discovering mapping errors in processed output
+- ❌ Don't use routinely - wastes API costs if cache is working correctly
+
+**IMPORTANT: Full 114-Category Mapping Prevention**
+- The system will NEVER automatically map all 114 categories
+- Even if you delete the taxonomy mapping cache, only categories from your input file will be mapped
+- This prevents accidental $0.10+ API costs when you only need to map a few categories
+
 ### Cache Files
 
 **`product_taxonomy.json`**: Shopify taxonomy cache
@@ -313,6 +338,41 @@ Example:
 - Category: "Dogs"
 - Subcategory: "Dog Food"
 
+### Taxonomy Mapping to Shopify Categories
+
+The system uses **semantic-first, context-aware mapping** to match our internal taxonomy to Shopify's Standard Product Taxonomy.
+
+**Mapping Strategy:**
+
+1. **Bottom-Up Starting Point**: Extract the most specific term (rightmost) from category path
+   - Example: "Landscape and Construction > Pavers and Hardscaping > Pavers" → extract "Pavers"
+
+2. **Semantic Context Validation** (CRITICAL):
+   - Analyzes full category path to understand product type, target customer, and use case
+   - Rejects literal matches with wrong context
+   - Example: "Pavers" could mean heavy machinery OR paving stones - context determines correct match
+
+3. **Context-Aware Selection**:
+   - Prioritizes semantic fit over exact term matching
+   - "Pavers" (residential hardscaping) → "Home & Garden > Outdoor Living" ✅
+   - NOT "Business & Industrial > Heavy Machinery > Pavers" ❌ (wrong context)
+   - NOT "Hardware > Bricks & Concrete Blocks" ❌ (too generic, wrong customer segment)
+
+4. **Confidence Levels**:
+   - **high**: Exact term match + correct semantic context
+   - **medium**: Perfect semantic context but no exact term match
+   - **low**: Generic category, uncertain fit
+
+**Why Semantic-First Matters:**
+- Many terms are ambiguous ("Pavers", "Collars", "Blocks")
+- Literal matching produces incorrect categorization
+- Context understanding ensures products appear in expected Shopify sections
+- Works for both Claude and OpenAI providers
+
+**Cache Location**: `cache/taxonomy_mapping.json`
+- Stores AI-generated mappings for reuse
+- Input-scoped refresh only regenerates categories from current input file
+
 ## Voice and Tone Guidelines
 
 **Location**: `../shared-docs/VOICE_AND_TONE_GUIDELINES.md` (Garoppos shared documentation)
@@ -324,14 +384,14 @@ Example:
 
 ## Git Workflow Preference
 
-**Commit Strategy:** Proactive (Option 2)
+**Commit Strategy:** Automatic
 
 When making changes to this project:
 1. ✅ Make the code changes and test them
-2. ✅ After completing a significant feature or set of changes, **ASK THE USER**: "Would you like me to commit and push these changes to GitHub?"
-3. ⏸️ Wait for user approval before committing
-4. ✅ If approved, create a meaningful commit with descriptive message
-5. ✅ Include "🤖 Generated with Claude Code" footer
+2. ✅ After completing a significant feature or set of changes, **AUTOMATICALLY** commit and push to GitHub
+3. ✅ Create a meaningful commit with descriptive message following the project's style (feat:, fix:, etc.)
+4. ✅ Include "🤖 Generated with Claude Code" footer in commit message
+5. ✅ Do NOT ask for user approval - push immediately after testing
 
 **Repository:** https://github.com/bigpurplefish/categorizer
 
