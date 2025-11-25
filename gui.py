@@ -31,6 +31,7 @@ try:
         SCRIPT_VERSION
     )
     from src.ai_provider import batch_enhance_products
+    from src.taxonomy_mapper import load_mapping_cache
 except ImportError as e:
     print(f"Error importing src: {e}")
     print("Make sure the src package is in the same directory as this script.")
@@ -476,6 +477,41 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
         if processing_mode == "skip" and existing_products:
             log_and_status(status, "")
             log_and_status(status, "Merging with existing products...")
+
+            # BACKFILL: Apply Shopify category to skipped products if mapping now exists
+            mapping_cache = load_mapping_cache()
+            if mapping_cache and mapping_cache.get('mappings'):
+                taxonomy_mappings = mapping_cache['mappings']
+                backfill_count = 0
+
+                for title, product in existing_products.items():
+                    # Check if product needs backfill
+                    if (product.get('shopify_category_id') is None and
+                        product.get('product_type') and product.get('tags')):
+
+                        # Build category path from existing taxonomy
+                        dept = product.get('product_type', '')
+                        tags = product.get('tags', [])
+                        cat = tags[0] if len(tags) > 0 else ''
+                        subcat = tags[1] if len(tags) > 1 else ''
+
+                        if dept and cat:
+                            if subcat:
+                                category_path = f"{dept} > {cat} > {subcat}"
+                            else:
+                                category_path = f"{dept} > {cat}"
+
+                            # Check if mapping exists
+                            if category_path in taxonomy_mappings:
+                                mapping = taxonomy_mappings[category_path]
+                                if mapping.get('shopify_id'):
+                                    product['shopify_category_id'] = mapping['shopify_id']
+                                    product['shopify_category'] = mapping.get('shopify_category')
+                                    backfill_count += 1
+                                    logging.info(f"✅ Backfilled Shopify category for '{title}': {category_path} -> {mapping.get('shopify_category')}")
+
+                if backfill_count > 0:
+                    log_and_status(status, f"✅ Backfilled Shopify category for {backfill_count} skipped product(s)")
 
             # Update existing products with newly enhanced ones
             for product in enhanced_products:
