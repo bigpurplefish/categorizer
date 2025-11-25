@@ -250,7 +250,8 @@ def batch_enhance_products(
     taxonomy_path: str = None,
     voice_tone_path: str = None,
     force_refresh_cache: bool = False,
-    force_refresh_taxonomy: bool = False
+    force_refresh_taxonomy: bool = False,
+    force_refresh_embeddings: bool = False
 ) -> List[Dict]:
     """
     Enhance multiple products with configured AI provider using caching.
@@ -265,6 +266,7 @@ def batch_enhance_products(
         voice_tone_path: Path to voice and tone guidelines markdown file
         force_refresh_cache: If True, bypass AI enhancement cache and re-process all products
         force_refresh_taxonomy: If True, force regenerate taxonomy mapping with AI
+        force_refresh_embeddings: If True, regenerate embeddings cache ($0.03 one-time cost)
 
     Returns:
         List of enhanced product dictionaries
@@ -327,6 +329,11 @@ def batch_enhance_products(
         log_and_status(status_fn, f"🚀 Batch mode enabled: 50% cost savings")
         log_and_status(status_fn, f"🤖 Using {provider_name} ({model}) - Batch API\n")
 
+        # Note: Input-scoped taxonomy refresh not supported in batch mode
+        if force_refresh_taxonomy:
+            logging.info("⚠️  Force Refresh Taxonomy is not supported in batch mode - will be ignored")
+            log_and_status(status_fn, "⚠️  Note: Force Refresh Taxonomy not supported in batch mode\n")
+
         # Route to batch API functions
         if provider == "openai":
             # Load Shopify categories for OpenAI
@@ -366,11 +373,21 @@ def batch_enhance_products(
     # Standard mode (not batch)
     log_and_status(status_fn, f"🤖 Using {provider_name} ({model})\n")
 
-    # Initialize intelligent Shopify taxonomy mapping
+    # Initialize hybrid taxonomy mapping with semantic search + prompt caching
     taxonomy_mappings = None
+    shopify_categories = None
+    embeddings_cache = None
     try:
         from .taxonomy_search import fetch_shopify_taxonomy_from_github
-        from .taxonomy_mapper import get_or_create_taxonomy_mapping
+        from .taxonomy_mapper import (
+            load_mapping_cache,
+            generate_contextual_shopify_mapping,
+            merge_new_mappings_into_cache,
+            save_mapping_cache,
+            compute_taxonomy_hash,
+            compute_file_hash
+        )
+        from .embedding_manager import get_or_regenerate_embeddings
 
         log_and_status(status_fn, f"Loading Shopify product taxonomy...")
         shopify_categories = fetch_shopify_taxonomy_from_github(status_fn)
@@ -378,40 +395,39 @@ def batch_enhance_products(
         if shopify_categories:
             log_and_status(status_fn, f"✅ Loaded {len(shopify_categories)} Shopify categories")
 
-            # Get or create intelligent taxonomy mapping (cached, only regenerates if taxonomies changed)
+            # NEW: Load or generate embeddings for semantic search
+            log_and_status(status_fn, f"Loading embeddings for semantic search...")
             try:
-                taxonomy_mappings = get_or_create_taxonomy_mapping(
-                    our_taxonomy_path=taxonomy_path,
+                embeddings_cache = get_or_regenerate_embeddings(
                     shopify_categories=shopify_categories,
                     api_key=api_key,
-                    provider=provider,
-                    model=model,
-                    status_fn=status_fn,
-                    force_remap=force_refresh_taxonomy
+                    force_refresh=force_refresh_embeddings,
+                    model="text-embedding-3-large",
+                    cache_path="cache/shopify_embeddings.pkl",
+                    status_fn=status_fn
                 )
-
-                if taxonomy_mappings and len(taxonomy_mappings) > 0:
-                    log_and_status(status_fn, f"✅ Taxonomy mapping ready ({len(taxonomy_mappings)} categories)")
-                    log_and_status(status_fn, f"")
-                else:
-                    error_msg = "❌ Taxonomy mapping generation returned empty results"
-                    logging.error(error_msg)
-                    log_and_status(status_fn, error_msg)
-                    log_and_status(status_fn, "⚠️  Shopify category IDs will be null - check logs for details")
-                    taxonomy_mappings = None
-
+                log_and_status(status_fn, f"✅ Embeddings ready ({len(embeddings_cache)} categories)")
             except Exception as e:
-                error_msg = f"❌ Failed to generate taxonomy mapping: {e}"
-                logging.error(error_msg)
-                logging.exception("Taxonomy mapping error details:")
-                log_and_status(status_fn, error_msg)
-                log_and_status(status_fn, "⚠️  Shopify category IDs will be null - products will not be matched to Shopify categories")
-                taxonomy_mappings = None
+                logging.error(f"Failed to load embeddings: {e}")
+                log_and_status(status_fn, f"❌ Failed to load embeddings - semantic search disabled")
+                embeddings_cache = None
+
+            # Load existing taxonomy mapping cache (for hybrid lazy mapping)
+            taxonomy_mappings = load_mapping_cache() or {}
+            if taxonomy_mappings and 'mappings' in taxonomy_mappings:
+                taxonomy_mappings = taxonomy_mappings.get('mappings', {})
+                log_and_status(status_fn, f"✅ Taxonomy mapping cache loaded ({len(taxonomy_mappings)} categories)")
+            else:
+                taxonomy_mappings = {}
+                logging.info("ℹ️  No taxonomy mapping cache - will generate on-the-fly with product context")
+                log_and_status(status_fn, "ℹ️  Taxonomy mappings will be generated on-the-fly (hybrid mode)")
+            log_and_status(status_fn, f"")
 
         else:
             logging.error("Failed to load Shopify taxonomy from GitHub - category matching will be disabled")
             log_and_status(status_fn, "❌ Failed to load Shopify taxonomy - category matching disabled")
             taxonomy_mappings = None
+            embeddings_cache = None
 
     except Exception as e:
         error_msg = f"❌ Failed to initialize Shopify taxonomy: {e}"
@@ -420,6 +436,7 @@ def batch_enhance_products(
         log_and_status(status_fn, error_msg)
         log_and_status(status_fn, "⚠️  Shopify category matching will be disabled")
         taxonomy_mappings = None
+        embeddings_cache = None
 
     # Load cache
     cache = load_cache()
@@ -434,6 +451,7 @@ def batch_enhance_products(
     enhanced_products = []
     enhanced_count = 0
     cached_count = 0
+    collected_categories = set()  # Collect unique categories for input-scoped refresh
 
     total = len(products)
 
@@ -445,7 +463,7 @@ def batch_enhance_products(
     if force_refresh_cache:
         logging.info(f"Force Refresh Cache: ENABLED")
     if force_refresh_taxonomy:
-        logging.info(f"Force Refresh Taxonomy: ENABLED")
+        logging.info(f"Force Refresh Taxonomy: ENABLED (input-scoped mode)")
     logging.info("=" * 80)
 
     for i, product in enumerate(products, 1):
@@ -481,6 +499,16 @@ def batch_enhance_products(
                 # Restore Shopify category ID from cache
                 enhanced_product['shopify_category_id'] = cached_data.get('shopify_category_id', None)
 
+                # Collect category for input-scoped taxonomy refresh
+                department = cached_data.get('department', '')
+                category = cached_data.get('category', '')
+                subcategory = cached_data.get('subcategory', '')
+                if department and category:
+                    if subcategory:
+                        collected_categories.add(f"{department} > {category} > {subcategory}")
+                    else:
+                        collected_categories.add(f"{department} > {category}")
+
                 enhanced_products.append(enhanced_product)
                 cached_count += 1
                 continue
@@ -497,19 +525,94 @@ def batch_enhance_products(
                 taxonomy_mappings=taxonomy_mappings
             )
 
+            # Extract taxonomy assignment
+            department = enhanced_product.get('product_type', '')
+            tags = enhanced_product.get('tags', [])
+            category = tags[0] if tags else ''
+            subcategory = tags[1] if len(tags) > 1 else ''
+
+            # HYBRID LAZY MAPPING: Generate Shopify category mapping on-the-fly with product context + semantic search
+            if shopify_categories and embeddings_cache and taxonomy_mappings is not None and department and category:
+                # Build category path
+                category_path = f"{department} > {category}"
+                if subcategory:
+                    category_path += f" > {subcategory}"
+
+                # Check if mapping exists
+                needs_mapping = (
+                    force_refresh_taxonomy or  # Force refresh enabled
+                    category_path not in taxonomy_mappings or  # Not in cache
+                    not taxonomy_mappings.get(category_path, {}).get('shopify_id')  # Missing Shopify ID
+                )
+
+                if needs_mapping:
+                    # Generate mapping with full product context + semantic search
+                    logging.info(f"🔍 New/refreshed category: {category_path}")
+                    log_and_status(status_fn, f"  🗺️  Mapping category to Shopify taxonomy...")
+
+                    try:
+                        shopify_mapping = generate_contextual_shopify_mapping(
+                            product=product,
+                            our_category=category_path,
+                            shopify_categories=shopify_categories,
+                            cached_embeddings=embeddings_cache,
+                            api_key=api_key,
+                            provider=provider,
+                            model=model,
+                            top_k=50  # TODO: Make configurable from config.json
+                        )
+
+                        # Cache the mapping
+                        taxonomy_mappings[category_path] = shopify_mapping
+
+                        # Save to disk immediately (incremental caching)
+                        shopify_hash = compute_taxonomy_hash(shopify_categories)
+                        our_hash = compute_file_hash(taxonomy_path)
+
+                        updated_cache = merge_new_mappings_into_cache(
+                            {category_path: shopify_mapping},
+                            shopify_hash,
+                            our_hash,
+                            provider,
+                            model,
+                            taxonomy_path
+                        )
+                        save_mapping_cache(updated_cache)
+
+                        # Assign Shopify category ID
+                        enhanced_product['shopify_category_id'] = shopify_mapping.get('shopify_id')
+                        logging.info(f"  ✅ Mapped to: {shopify_mapping.get('shopify_category')}")
+
+                    except Exception as e:
+                        logging.error(f"Failed to generate Shopify mapping for {category_path}: {e}")
+                        enhanced_product['shopify_category_id'] = None
+                else:
+                    # Use cached mapping
+                    shopify_mapping = taxonomy_mappings.get(category_path, {})
+                    enhanced_product['shopify_category_id'] = shopify_mapping.get('shopify_id')
+                    if shopify_mapping.get('shopify_id'):
+                        logging.debug(f"  ✅ Cache hit: {category_path} -> {shopify_mapping.get('shopify_category')}")
+
             # Save to cache
             cached_products[cache_key] = {
                 "enhanced_at": datetime.now().isoformat(),
                 "input_hash": product_hash,
                 "provider": provider,
                 "model": model,
-                "department": enhanced_product.get('product_type', ''),
-                "category": enhanced_product.get('tags', [])[0] if enhanced_product.get('tags') else '',
-                "subcategory": enhanced_product.get('tags', [])[1] if len(enhanced_product.get('tags', [])) > 1 else '',
+                "department": department,
+                "category": category,
+                "subcategory": subcategory,
                 "enhanced_description": enhanced_product.get('body_html', ''),
                 "shopify_category_id": enhanced_product.get('shopify_category_id', None)
             }
             enhanced_count += 1
+
+            # Collect category for input-scoped taxonomy refresh
+            if department and category:
+                if subcategory:
+                    collected_categories.add(f"{department} > {category} > {subcategory}")
+                else:
+                    collected_categories.add(f"{department} > {category}")
 
             enhanced_products.append(enhanced_product)
 
@@ -544,6 +647,10 @@ def batch_enhance_products(
     # Save cache
     cache["products"] = cached_products
     save_cache(cache)
+
+    # NOTE: Batch taxonomy mapping has been replaced with hybrid lazy mapping (inline with product processing)
+    # Shopify category IDs are now assigned on-the-fly during product enhancement with full product context
+    # This provides better accuracy (AI sees product details) and uses prompt caching for cost efficiency
 
     # Summary
     logging.info("=" * 80)

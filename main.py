@@ -102,6 +102,17 @@ def main():
         action="store_true",
         help="Force regenerate taxonomy mapping using AI (use when taxonomy structure changes)"
     )
+    parser.add_argument(
+        "--force-refresh-embeddings",
+        action="store_true",
+        help="Force regenerate embeddings cache for semantic search ($0.03 one-time cost)"
+    )
+    parser.add_argument(
+        "--embedding-top-k",
+        type=int,
+        default=50,
+        help="Number of relevant Shopify categories to send to AI (default: 50)"
+    )
 
     args = parser.parse_args()
 
@@ -142,6 +153,12 @@ def main():
     if args.force_refresh_taxonomy:
         config["FORCE_REFRESH_TAXONOMY"] = True
         print_status("⚠️  Force refresh taxonomy enabled - regenerating taxonomy mapping")
+    if args.force_refresh_embeddings:
+        config["FORCE_REFRESH_EMBEDDINGS"] = True
+        print_status("⚠️  Force refresh embeddings enabled - regenerating embeddings cache ($0.03)")
+    if args.embedding_top_k:
+        config["EMBEDDING_SEARCH_TOP_K"] = args.embedding_top_k
+        print_status(f"📊 Using top {args.embedding_top_k} categories for semantic search")
 
     # Check for API keys
     if config.get("AI_PROVIDER") == "claude":
@@ -189,7 +206,8 @@ def main():
             config,
             status_fn=print_status,
             force_refresh_cache=config.get("FORCE_REFRESH_AI_CACHE", False),
-            force_refresh_taxonomy=config.get("FORCE_REFRESH_TAXONOMY", False)
+            force_refresh_taxonomy=config.get("FORCE_REFRESH_TAXONOMY", False),
+            force_refresh_embeddings=config.get("FORCE_REFRESH_EMBEDDINGS", False)
         )
         print_status(f"Enhanced {len(enhanced_products)} products")
     except Exception as e:

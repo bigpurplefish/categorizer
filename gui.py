@@ -458,7 +458,8 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
                 taxonomy_path,
                 voice_tone_path,
                 force_refresh_cache=cfg.get("FORCE_REFRESH_AI_CACHE", False),
-                force_refresh_taxonomy=cfg.get("FORCE_REFRESH_TAXONOMY", False)
+                force_refresh_taxonomy=cfg.get("FORCE_REFRESH_TAXONOMY", False),
+                force_refresh_embeddings=cfg.get("FORCE_REFRESH_EMBEDDINGS", False)
             )
 
             log_and_status(status, "")
@@ -1044,8 +1045,12 @@ def build_gui():
 
     ToolTip(help_icon, text="Force refresh cached data to re-process products.\n\n"
                            "AI Cache: Re-process all products with AI even if cached.\n"
-                           "Taxonomy Mapping: Regenerate mapping from our taxonomy to Shopify's.\n\n"
-                           "Tip: Use when taxonomy or guidelines change.", bootstyle="info")
+                           "Taxonomy Mapping: Regenerate mappings ONLY for categories in this input file.\n"
+                           "  (Input-scoped refresh - only maps categories detected in your products)\n"
+                           "Embeddings: Regenerate semantic search embeddings for Shopify taxonomy.\n"
+                           "  (~30 seconds, $0.03 one-time cost, auto-regenerates when taxonomy changes)\n\n"
+                           "Tip: Use when specific category mappings need correction.\n"
+                           "Note: Taxonomy refresh not supported in batch mode.", bootstyle="info")
 
     # Checkboxes for cache refresh options
     cache_frame = tb.Frame(container)
@@ -1067,7 +1072,16 @@ def build_gui():
         variable=force_refresh_taxonomy_var,
         bootstyle="warning-round-toggle"
     )
-    force_refresh_taxonomy_check.pack(side="left")
+    force_refresh_taxonomy_check.pack(side="left", padx=(0, 20))
+
+    force_refresh_embeddings_var = tb.BooleanVar(value=cfg.get("FORCE_REFRESH_EMBEDDINGS", False))
+    force_refresh_embeddings_check = tb.Checkbutton(
+        cache_frame,
+        text="Force Refresh Embeddings ($0.03)",
+        variable=force_refresh_embeddings_var,
+        bootstyle="warning-round-toggle"
+    )
+    force_refresh_embeddings_check.pack(side="left")
 
     # Auto-save callbacks
     def on_force_ai_change(*args):
@@ -1078,8 +1092,13 @@ def build_gui():
         cfg["FORCE_REFRESH_TAXONOMY"] = force_refresh_taxonomy_var.get()
         save_config(cfg)
 
+    def on_force_embeddings_change(*args):
+        cfg["FORCE_REFRESH_EMBEDDINGS"] = force_refresh_embeddings_var.get()
+        save_config(cfg)
+
     force_refresh_ai_var.trace_add("write", on_force_ai_change)
     force_refresh_taxonomy_var.trace_add("write", on_force_taxonomy_change)
+    force_refresh_embeddings_var.trace_add("write", on_force_embeddings_change)
 
     row += 1
 

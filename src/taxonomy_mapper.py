@@ -247,12 +247,59 @@ def needs_remapping(
     return False
 
 
+def build_shopify_taxonomy_text_for_caching(
+    shopify_categories: List[Dict]
+) -> str:
+    """
+    Build formatted Shopify taxonomy text optimized for prompt caching.
+
+    NEW: Now receives FILTERED categories (top K from semantic search) instead of full taxonomy.
+    This reduces tokens from ~479K (all 11,764 categories) to ~5K (top 50).
+    The filtered taxonomy is still cached for efficiency.
+
+    Args:
+        shopify_categories: Filtered list of Shopify category dicts (from semantic search)
+
+    Returns:
+        Formatted taxonomy text with category paths and IDs
+    """
+    # Group by top-level section
+    by_section = {}
+    for cat in shopify_categories:
+        full_name = cat.get('fullName', '')
+        section = full_name.split(' > ')[0] if ' > ' in full_name else full_name
+
+        if section not in by_section:
+            by_section[section] = []
+        by_section[section].append(cat)
+
+    # Build formatted text
+    text = "SHOPIFY STANDARD PRODUCT TAXONOMY (Filtered - Most Relevant):\n\n"
+    text += f"Total Categories: {len(shopify_categories)}\n\n"
+
+    for section in sorted(by_section.keys()):
+        text += f"## {section}\n\n"
+
+        # Sort categories alphabetically within section
+        categories = sorted(by_section[section], key=lambda x: x.get('fullName', ''))
+
+        for cat in categories:
+            text += f"  - {cat.get('fullName')} [ID: {cat.get('id')}]\n"
+
+        text += "\n"
+
+    return text
+
+
 def create_ai_mapping_prompt(
     our_categories: List[str],
     shopify_categories: List[Dict]
 ) -> str:
     """
     Create prompt for AI to map our taxonomy to Shopify's taxonomy.
+
+    NOTE: This function is deprecated in favor of the new hybrid approach
+    with context-aware mapping. Kept for backward compatibility.
 
     Args:
         our_categories: List of our category paths
@@ -261,6 +308,7 @@ def create_ai_mapping_prompt(
     Returns:
         Prompt string for AI
     """
+
     # Group Shopify categories by top-level for easier navigation
     shopify_by_top = {}
     for cat in shopify_categories:
@@ -275,15 +323,28 @@ def create_ai_mapping_prompt(
             'fullName': full_name
         })
 
-    # Build Shopify taxonomy text (grouped and truncated for token efficiency)
+    # Build Shopify taxonomy text (grouped with limit for large sections)
     shopify_text = "SHOPIFY STANDARD PRODUCT TAXONOMY:\n\n"
-    for top_level in sorted(shopify_by_top.keys())[:50]:  # Limit to 50 top-level categories
+    SUBCATEGORY_LIMIT = 300  # Show up to 300 subcategories per section
+
+    for top_level in sorted(shopify_by_top.keys()):
         shopify_text += f"{top_level}:\n"
-        for cat in shopify_by_top[top_level][:100]:  # Limit subcategories per top-level
+
+        categories = shopify_by_top[top_level]
+
+        # For large sections, limit to first N categories (sorted alphabetically)
+        if len(categories) > SUBCATEGORY_LIMIT:
+            logging.debug(f"Limiting {top_level} to {SUBCATEGORY_LIMIT} categories (has {len(categories)} total)")
+            categories_sorted = sorted(categories, key=lambda x: x['fullName'])
+            categories_to_show = categories_sorted[:SUBCATEGORY_LIMIT]
+        else:
+            categories_to_show = sorted(categories, key=lambda x: x['fullName'])
+
+        for cat in categories_to_show:
             shopify_text += f"  - {cat['fullName']} [ID: {cat['id']}]\n"
 
-        if len(shopify_by_top[top_level]) > 100:
-            shopify_text += f"  ... and {len(shopify_by_top[top_level]) - 100} more\n"
+        if len(categories) > len(categories_to_show):
+            shopify_text += f"  ... and {len(categories) - len(categories_to_show)} more\n"
         shopify_text += "\n"
 
     # Build our categories text
@@ -297,33 +358,137 @@ def create_ai_mapping_prompt(
 
 {shopify_text}
 
-INSTRUCTIONS:
+MANDATORY MAPPING PROCESS:
 
-For each of our internal taxonomy paths, find the BEST matching Shopify category using a BOTTOM-UP search strategy.
+You MUST follow this 4-phase process for each category. Semantic context validation is CRITICAL - literal term matching alone will produce incorrect results.
 
-MAPPING STRATEGY (CRITICAL):
-1. **START WITH THE RIGHTMOST/MOST SPECIFIC TERM** (the leaf category)
-   Example: For "Landscape and Construction > Aggregates > Sand"
-   - Extract the specific term: "Sand"
-   - Search Shopify taxonomy for exact or semantic matches to "Sand"
-   - Found: "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand" ✅
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 1: EXTRACT RIGHTMOST TERM (Bottom-Up Starting Point)
+═══════════════════════════════════════════════════════════════════════════════
+Extract the most specific term from the category path (rightmost element).
 
-2. **Validate the match makes semantic sense**
-   - Does the Shopify category path align with the product type?
-   - Is this the most specific level available?
+Example: "Landscape and Construction > Pavers and Hardscaping > Pavers"
+→ Extract: "Pavers"
 
-3. **Only use broader categories if no specific match exists**
-   - If "Sand" had no specific match, then consider "Aggregates" or "Landscape and Construction"
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 2: UNDERSTAND SEMANTIC CONTEXT (CRITICAL - Do NOT Skip)
+═══════════════════════════════════════════════════════════════════════════════
+Before searching, analyze the FULL category path to understand:
 
-4. **Assign confidence level:**
-   - "high": Exact term match at deepest level (e.g., "Sand" → "...> Sand")
-   - "medium": Semantic match but not exact term
-   - "low": Had to use broader/generic category
+1. **What is this product?** (e.g., hardscaping materials for residential patios)
+2. **Who uses it?** (e.g., homeowners, residential landscapers, contractors, industries)
+3. **What's the use case?** (e.g., building outdoor patios, industrial construction, pet care)
+4. **Which Shopify section fits?** (e.g., Home & Garden, Hardware, Pet Supplies, Business & Industrial)
 
-EXAMPLES:
-- "Landscape and Construction > Aggregates > Sand" → Search for "Sand" → "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand" (high)
-- "Landscape and Construction > Aggregates > Soil" → Search for "Soil" → "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Soil" (high)
-- "Pet Supplies > Dogs > Collars" → Search for "Collars" → "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Collars & Leashes > Dog Collars" (high)
+Example: "Landscape and Construction > Pavers and Hardscaping > Pavers"
+→ Product: Concrete/stone pavers for residential hardscaping projects
+→ User: Homeowners, residential landscapers
+→ Use case: Building patios, walkways, driveways in residential yards
+→ Expected section: Home & Garden > Outdoor Living (NOT industrial equipment or bulk construction materials)
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 3: SEARCH WITH CONTEXT VALIDATION
+═══════════════════════════════════════════════════════════════════════════════
+Search for the extracted term in Shopify taxonomy, then VALIDATE each match against semantic context.
+
+✅ ACCEPT matches that:
+- Fit the product type and use case
+- Target the correct customer segment
+- Appear in the expected Shopify section
+
+❌ REJECT matches that:
+- Have the same term but wrong context (e.g., "Pavers" as heavy machinery vs. paving stones)
+- Are too generic or unrelated (e.g., pet collars → clothing collars)
+- Target different customer segments (e.g., residential products in industrial sections)
+
+Example Search: "Pavers"
+Found matches:
+  1. "Business & Industrial > Heavy Machinery > Pavers"
+     → Context: Industrial paving equipment (asphalt/concrete pavers)
+     → ❌ REJECT: Wrong context - this is machinery, not paving stones
+
+  2. "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks"
+     → Context: Bulk construction materials for contractors
+     → ❌ REJECT: Too generic, wrong customer focus (commercial construction vs. residential landscaping)
+
+  3. "Home & Garden > Lawn & Garden > Outdoor Living"
+     → Context: Residential outdoor living products, hardscaping materials
+     → ✅ ACCEPT: Perfect semantic fit - residential hardscaping products for outdoor living spaces
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 4: SELECT BEST MATCH & ASSIGN CONFIDENCE
+═══════════════════════════════════════════════════════════════════════════════
+Choose the category that best matches the semantic context, even if it doesn't contain the exact term.
+
+Confidence levels:
+- **high**: Exact term match + correct semantic context (e.g., "Dog Collars" → "...> Dog Collars")
+- **medium**: Perfect semantic context but no exact term (e.g., "Pavers" → "Outdoor Living")
+- **low**: Generic category, uncertain fit
+
+COMPLETE EXAMPLES WITH SEMANTIC REASONING:
+
+Example 1: Context-Aware Matching (No Exact Term)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Input: "Landscape and Construction > Pavers and Hardscaping > Pavers"
+
+Phase 1 - Extract: "Pavers"
+
+Phase 2 - Semantic Context:
+  • Product: Concrete/stone pavers for residential hardscaping
+  • User: Homeowners, residential landscapers
+  • Use case: Building patios, walkways, driveways
+  • Expected: Home & Garden section
+
+Phase 3 - Search & Validate:
+  ❌ "Business & Industrial > Heavy Machinery > Pavers" (industrial equipment - WRONG context)
+  ❌ "Hardware > Bricks & Concrete Blocks" (bulk construction - WRONG customer focus)
+  ✅ "Home & Garden > Lawn & Garden > Outdoor Living" (residential outdoor products - CORRECT)
+
+Phase 4 - Selected:
+  → "Home & Garden > Lawn & Garden > Outdoor Living"
+  → Confidence: medium (perfect semantic fit, no exact term match)
+  → Reasoning: "Residential hardscaping materials for outdoor living spaces; fits customer and use case perfectly despite lack of specific 'pavers' subcategory"
+
+Example 2: Exact Match with Context Validation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Input: "Pet Supplies > Dogs > Collars"
+
+Phase 1 - Extract: "Collars"
+
+Phase 2 - Semantic Context:
+  • Product: Pet collars for dogs
+  • User: Pet owners
+  • Use case: Dog identification, leash attachment, style
+  • Expected: Pet Supplies section
+
+Phase 3 - Search & Validate:
+  ❌ "Apparel & Accessories > Clothing Accessories > Collars" (clothing - WRONG context)
+  ✅ "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Collars & Leashes > Dog Collars" (pet products - CORRECT)
+
+Phase 4 - Selected:
+  → "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Collars & Leashes > Dog Collars"
+  → Confidence: high (exact term + correct context)
+  → Reasoning: "Exact match for dog collars in pet supplies section"
+
+Example 3: Term Match with Semantic Validation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Input: "Landscape and Construction > Aggregates > Sand"
+
+Phase 1 - Extract: "Sand"
+
+Phase 2 - Semantic Context:
+  • Product: Landscape sand for gardening, hardscaping
+  • User: Homeowners, landscapers
+  • Use case: Garden beds, between pavers, leveling
+  • Expected: Home & Garden section
+
+Phase 3 - Search & Validate:
+  ✅ "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand" (gardening/landscaping - CORRECT)
+
+Phase 4 - Selected:
+  → "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Sand"
+  → Confidence: high (exact term + correct context)
+  → Reasoning: "Perfect match for landscape sand in gardening context"
 
 OUTPUT FORMAT (valid JSON only, no markdown):
 
@@ -360,7 +525,8 @@ def generate_taxonomy_mapping_with_ai(
     api_key: str,
     provider: str = "claude",
     model: str = None,
-    status_fn=None
+    status_fn=None,
+    department: Optional[str] = None
 ) -> Dict:
     """
     Use AI to create intelligent mapping from our taxonomy to Shopify's taxonomy.
@@ -372,6 +538,7 @@ def generate_taxonomy_mapping_with_ai(
         provider: "claude" or "openai"
         model: Model to use (optional, uses defaults)
         status_fn: Optional status update function
+        department: Optional department name for filtering Shopify categories
 
     Returns:
         Mapping dictionary: {our_category_path: {shopify_category, shopify_id, confidence, reasoning}}
@@ -384,7 +551,7 @@ def generate_taxonomy_mapping_with_ai(
     else:
         logging.info(f"🤖 Using AI to map {len(our_categories)} categories to Shopify taxonomy...")
 
-    prompt = create_ai_mapping_prompt(our_categories, shopify_categories)
+    prompt = create_ai_mapping_prompt(our_categories, shopify_categories, department)
 
     try:
         if provider == "claude":
@@ -585,6 +752,381 @@ def generate_taxonomy_mapping_with_ai(
         raise
 
 
+def parse_shopify_mapping_response(response_text: str) -> Dict:
+    """
+    Parse AI response to extract Shopify category mapping.
+
+    Expects JSON format:
+    {
+      "shopify_category": "Hardware > Building Consumables > ...",
+      "shopify_id": "gid://shopify/TaxonomyCategory/...",
+      "confidence": "high|medium|low",
+      "reasoning": "explanation"
+    }
+
+    Args:
+        response_text: Raw AI response text
+
+    Returns:
+        Dict with shopify_category, shopify_id, confidence, reasoning
+
+    Raises:
+        ValueError: If response cannot be parsed
+    """
+    import re
+
+    try:
+        # Try to extract JSON from response
+        # Look for JSON block (might be in markdown code block)
+        json_match = re.search(r'```json\s*(.*?)\s*```', response_text, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find JSON object directly
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+            else:
+                raise ValueError("No JSON found in response")
+
+        # Parse JSON
+        mapping = json.loads(json_str)
+
+        # Validate required fields
+        required_fields = ['shopify_category', 'shopify_id']
+        for field in required_fields:
+            if field not in mapping:
+                raise ValueError(f"Missing required field: {field}")
+
+        # Add defaults for optional fields
+        if 'confidence' not in mapping:
+            mapping['confidence'] = 'medium'
+        if 'reasoning' not in mapping:
+            mapping['reasoning'] = 'AI-generated mapping'
+
+        return mapping
+
+    except Exception as e:
+        logging.error(f"Failed to parse AI response: {e}")
+        logging.error(f"Response text: {response_text[:500]}...")
+        raise ValueError(f"Could not parse Shopify mapping from AI response: {e}")
+
+
+def generate_contextual_shopify_mapping(
+    product: Dict,
+    our_category: str,
+    shopify_categories: List[Dict],
+    cached_embeddings: List[Dict],
+    api_key: str,
+    provider: str = "claude",
+    model: str = None,
+    top_k: int = 50
+) -> Dict:
+    """
+    Generate Shopify mapping using semantic search + full product context.
+
+    NEW: Uses embeddings to filter taxonomy from 11,764 → top K categories (~50).
+    This solves the token limit issue while maintaining high accuracy.
+
+    Args:
+        product: Product dict with title, description, size, manufacturer
+        our_category: Our internal category path
+        shopify_categories: FULL Shopify taxonomy (not sent to AI, used for reference)
+        cached_embeddings: Pre-computed embeddings for semantic search
+        api_key: AI provider API key
+        provider: "claude" or "openai"
+        model: Model to use
+        top_k: Number of relevant categories to send to AI (default: 50)
+
+    Returns:
+        Dict with: {shopify_category, shopify_id, confidence, reasoning}
+    """
+    from .embedding_manager import find_relevant_categories
+
+    # SEMANTIC SEARCH: Filter to top K most relevant categories
+    # This reduces tokens from 479K (all categories) to ~5K (top 50)
+    logging.info(f"🔍 Running semantic search for: {our_category}")
+    relevant_categories = find_relevant_categories(
+        product=product,
+        our_category=our_category,
+        cached_embeddings=cached_embeddings,
+        api_key=api_key,
+        model="text-embedding-3-large",
+        top_k=top_k
+    )
+
+    # Build product context
+    product_context = f"""
+PRODUCT TO CATEGORIZE:
+Title: {product.get('title', 'N/A')}
+Description: {product.get('description_1', 'N/A')}
+Size/Specifications: {product.get('size', 'N/A')}
+Manufacturer: {product.get('manufacturer_found', 'N/A')}
+
+OUR INTERNAL CATEGORIZATION:
+{our_category}
+
+YOUR TASK:
+Map this specific product to the most accurate Shopify Standard Product Taxonomy category.
+
+CRITICAL REQUIREMENTS:
+
+1. **Tax Implications**: Shopify categories directly control sales tax rates. Wrong category = legal/financial liability.
+
+2. **Functional vs Decorative**:
+   - Construction/building materials → Hardware > Building categories
+   - Decorative/aesthetic items → Home & Garden > Decor categories
+
+3. **Use Product Context**: The title and description tell you the TRUE purpose
+   - "Paver for driveways/patios" → Building material (Hardware > Masonry)
+   - "Decorative garden stone" → Decorative item (Home & Garden > Decor)
+
+4. **Accuracy > Similarity**: Choose based on FUNCTION, not just word matching
+   - "Pavers" ≠ "Stepping Stones" (different tax treatment!)
+   - Construction materials need construction categories
+
+RESPONSE FORMAT:
+Return a JSON object with:
+{{
+  "shopify_category": "Full > Category > Path",
+  "shopify_id": "gid://shopify/TaxonomyCategory/...",
+  "confidence": "high|medium|low",
+  "reasoning": "Why this category is correct for THIS specific product"
+}}
+"""
+
+    # Call appropriate provider with FILTERED categories (prompt caching still works)
+    if provider == "claude":
+        return call_claude_with_caching(
+            product_context,
+            relevant_categories,  # FILTERED (top 50), not full taxonomy
+            api_key,
+            model
+        )
+    else:
+        return call_openai_with_caching(
+            product_context,
+            relevant_categories,  # FILTERED (top 50), not full taxonomy
+            api_key,
+            model
+        )
+
+
+def call_claude_with_caching(
+    product_context: str,
+    shopify_categories: List[Dict],
+    api_key: str,
+    model: str = None
+) -> Dict:
+    """
+    Call Claude API with prompt caching for Shopify taxonomy.
+
+    NEW: Receives FILTERED categories (top 50) from semantic search.
+    The filtered taxonomy (~5K tokens) is marked for caching.
+    First call pays full price, subsequent calls get 90% discount.
+
+    Cache lasts 5 minutes (refreshed on use), max 1 hour.
+
+    Args:
+        product_context: Product details and mapping instructions
+        shopify_categories: FILTERED Shopify categories (top K from semantic search)
+        api_key: Anthropic API key
+        model: Model name (defaults to Sonnet 4.5)
+
+    Returns:
+        Dict with shopify_category, shopify_id, confidence, reasoning
+    """
+    try:
+        from anthropic import Anthropic
+    except ImportError:
+        raise ImportError("anthropic package not installed. Run: pip install anthropic")
+
+    client = Anthropic(api_key=api_key)
+    model = model or "claude-sonnet-4-5-20250929"
+
+    # Build filtered taxonomy text (this will be cached)
+    taxonomy_text = build_shopify_taxonomy_text_for_caching(shopify_categories)
+
+    logging.info(f"Calling Claude API ({model}) with prompt caching...")
+    logging.info(f"  Filtered to {len(shopify_categories)} relevant categories")
+
+    # System message with cached taxonomy
+    response = client.messages.create(
+        model=model,
+        max_tokens=2000,
+        system=[
+            {
+                "type": "text",
+                "text": "You are a product taxonomy expert specializing in accurate Shopify category assignment for proper tax treatment."
+            },
+            {
+                "type": "text",
+                "text": taxonomy_text,  # Filtered Shopify taxonomy (top K)
+                "cache_control": {"type": "ephemeral"}  # ← CACHE THIS!
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": product_context  # Product-specific (not cached)
+            }
+        ]
+    )
+
+    # Log cache metrics
+    usage = response.usage
+    cache_creation = getattr(usage, 'cache_creation_input_tokens', 0)
+    cache_read = getattr(usage, 'cache_read_input_tokens', 0)
+
+    if cache_creation > 0:
+        logging.info(f"📝 Cache write: {cache_creation} tokens")
+    if cache_read > 0:
+        logging.info(f"✅ Cache read: {cache_read} tokens (90% discount!)")
+
+    logging.info(f"Input tokens: {usage.input_tokens}, Output tokens: {usage.output_tokens}")
+
+    # Parse response
+    response_text = response.content[0].text
+    return parse_shopify_mapping_response(response_text)
+
+
+def call_openai_with_caching(
+    product_context: str,
+    shopify_categories: List[Dict],
+    api_key: str,
+    model: str = None
+) -> Dict:
+    """
+    Call OpenAI API with automatic prompt caching.
+
+    NEW: Receives FILTERED categories (top 50) from semantic search.
+    OpenAI automatically caches the filtered taxonomy if it:
+    - Appears at the beginning of the prompt
+    - Exceeds 1024 tokens
+    - Is reused within 5-10 minutes
+
+    Cache provides 50% discount on cached tokens.
+
+    Args:
+        product_context: Product details and mapping instructions
+        shopify_categories: FILTERED Shopify categories (top K from semantic search)
+        api_key: OpenAI API key
+        model: Model name (defaults to gpt-5)
+
+    Returns:
+        Dict with shopify_category, shopify_id, confidence, reasoning
+    """
+    try:
+        from openai import OpenAI
+    except ImportError:
+        raise ImportError("openai package not installed. Run: pip install openai")
+
+    client = OpenAI(api_key=api_key)
+    model = model or "gpt-5"
+
+    # Build filtered taxonomy text
+    taxonomy_text = build_shopify_taxonomy_text_for_caching(shopify_categories)
+
+    logging.info(f"Calling OpenAI API ({model}) with automatic caching...")
+    logging.info(f"  Filtered to {len(shopify_categories)} relevant categories")
+
+    # System message with taxonomy at BEGINNING (auto-cached)
+    system_content = f"""You are a product taxonomy expert specializing in accurate Shopify category assignment.
+
+CRITICAL: Shopify categories directly control sales tax rates. Wrong category = legal/financial liability.
+
+{taxonomy_text}
+"""
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": product_context}
+        ],
+        max_completion_tokens=2000
+    )
+
+    # Log cache metrics (OpenAI automatic caching)
+    usage = response.usage
+    prompt_details = getattr(usage, 'prompt_tokens_details', None)
+    cached_tokens = getattr(prompt_details, 'cached_tokens', 0) if prompt_details else 0
+
+    if cached_tokens > 0:
+        logging.info(f"✅ Cache hit: {cached_tokens} tokens (50% discount!)")
+    else:
+        logging.info(f"📝 Cache miss: {usage.prompt_tokens} tokens (will cache for next call)")
+
+    logging.info(f"Completion tokens: {usage.completion_tokens}")
+
+    # Parse response
+    response_text = response.choices[0].message.content
+    return parse_shopify_mapping_response(response_text)
+
+
+def merge_new_mappings_into_cache(
+    new_mappings: Dict,
+    shopify_taxonomy_hash: str,
+    our_taxonomy_hash: str,
+    provider: str,
+    model: str,
+    our_taxonomy_path: str = None
+) -> Dict:
+    """
+    Merge new category mappings into existing cache without losing other entries.
+
+    Args:
+        new_mappings: New mappings to add/update
+        shopify_taxonomy_hash: Current Shopify taxonomy hash
+        our_taxonomy_hash: Current our taxonomy hash
+        provider: AI provider used
+        model: AI model used
+        our_taxonomy_path: Path to taxonomy file (optional, for calculating category_count)
+
+    Returns:
+        Updated cache dictionary
+    """
+    # Load existing cache
+    cache = load_mapping_cache()
+
+    if cache and cache.get('mappings'):
+        # Merge: new mappings overwrite existing ones for same keys
+        existing_mappings = cache['mappings']
+        updated_mappings = {**existing_mappings, **new_mappings}
+
+        logging.info(f"Merging {len(new_mappings)} new mappings into cache with {len(existing_mappings)} existing mappings")
+        logging.info(f"Updated cache now has {len(updated_mappings)} total mappings")
+
+        # Preserve category_count from existing cache
+        category_count = cache.get('category_count', len(updated_mappings))
+    else:
+        # No existing cache, use new mappings only
+        updated_mappings = new_mappings
+        logging.info(f"Creating new cache with {len(new_mappings)} mappings")
+
+        # Calculate category_count if taxonomy path provided
+        if our_taxonomy_path:
+            our_categories = load_our_taxonomy(our_taxonomy_path)
+            category_count = len(our_categories) if our_categories else len(updated_mappings)
+        else:
+            category_count = len(updated_mappings)
+
+    # Create updated cache
+    updated_cache = {
+        'version': '1.0',
+        'shopify_taxonomy_hash': shopify_taxonomy_hash,
+        'our_taxonomy_hash': our_taxonomy_hash,
+        'provider': provider,
+        'model': model or 'default',
+        'created_at': datetime.now().isoformat(),
+        'category_count': category_count,
+        'mapped_count': len(updated_mappings),
+        'mappings': updated_mappings
+    }
+
+    return updated_cache
+
+
 def get_or_create_taxonomy_mapping(
     our_taxonomy_path: str,
     shopify_categories: List[Dict],
@@ -592,7 +1134,8 @@ def get_or_create_taxonomy_mapping(
     provider: str = "claude",
     model: str = None,
     status_fn=None,
-    force_remap: bool = False
+    force_remap: bool = False,
+    categories_to_map: Optional[List[str]] = None
 ) -> Dict:
     """
     Get cached taxonomy mapping or create new one if needed.
@@ -601,6 +1144,7 @@ def get_or_create_taxonomy_mapping(
     1. Computes hashes of both taxonomies
     2. Checks if cache is valid
     3. Returns cached mappings if valid, or generates new ones if needed
+    4. If categories_to_map is provided, only maps those specific categories
 
     Args:
         our_taxonomy_path: Path to PRODUCT_TAXONOMY.md
@@ -610,6 +1154,7 @@ def get_or_create_taxonomy_mapping(
         model: AI model to use (optional)
         status_fn: Optional status update function
         force_remap: Force remapping even if cache is valid
+        categories_to_map: Optional list of specific category paths to map (input-scoped mode)
 
     Returns:
         Dictionary mapping our categories to Shopify categories
@@ -627,20 +1172,123 @@ def get_or_create_taxonomy_mapping(
     # Load existing cache
     cache = load_mapping_cache()
 
-    # Check if remapping is needed
-    if force_remap:
-        logging.info("Force remap requested")
-        needs_remap = True
-    else:
-        needs_remap = needs_remapping(our_taxonomy_hash, shopify_taxonomy_hash, cache)
+    # INPUT-SCOPED MODE: Only map specific categories from input file
+    if categories_to_map is not None:
+        logging.info(f"🎯 Input-scoped mapping mode: Processing {len(categories_to_map)} categories from input file")
 
-    if not needs_remap and cache:
+        if force_remap:
+            # Force refresh for these specific categories
+            if status_fn:
+                log_and_status(status_fn, f"🔄 Force refresh: Regenerating mappings for {len(categories_to_map)} categories from input file...")
+            logging.info(f"Force refresh enabled: Regenerating {len(categories_to_map)} category mappings")
+        else:
+            # Filter to only categories that need mapping (not in cache or missing shopify_id)
+            categories_needing_mapping = []
+            existing_cache_mappings = cache.get('mappings', {}) if cache else {}
+
+            for cat_path in categories_to_map:
+                if cat_path not in existing_cache_mappings or not existing_cache_mappings[cat_path].get('shopify_id'):
+                    categories_needing_mapping.append(cat_path)
+
+            if not categories_needing_mapping:
+                logging.info(f"✅ All {len(categories_to_map)} categories already mapped in cache")
+                if status_fn:
+                    log_and_status(status_fn, f"✅ Using cached mappings for all {len(categories_to_map)} categories")
+                return existing_cache_mappings
+
+            # Only map the ones that need mapping
+            categories_to_map = categories_needing_mapping
+            logging.info(f"📋 {len(categories_to_map)} categories need mapping (not in cache or missing ID)")
+
+        # Group categories by department for department-specific filtering
+        categories_by_department = {}
+        for cat_path in categories_to_map:
+            dept = extract_department_from_category(cat_path)
+            if dept:
+                if dept not in categories_by_department:
+                    categories_by_department[dept] = []
+                categories_by_department[dept].append(cat_path)
+            else:
+                # Unknown department - add to "None" group
+                if None not in categories_by_department:
+                    categories_by_department[None] = []
+                categories_by_department[None].append(cat_path)
+
+        logging.info(f"📊 Grouped {len(categories_to_map)} categories into {len(categories_by_department)} department(s)")
+
+        # Generate mappings for each department group
+        new_mappings = {}
+        for dept, dept_categories in categories_by_department.items():
+            if dept:
+                logging.info(f"🎯 Mapping {len(dept_categories)} categories from '{dept}' department")
+                if status_fn:
+                    log_and_status(status_fn, f"🤖 Mapping {len(dept_categories)} '{dept}' categories...")
+            else:
+                logging.info(f"🎯 Mapping {len(dept_categories)} categories with unknown department")
+                if status_fn:
+                    log_and_status(status_fn, f"🤖 Mapping {len(dept_categories)} categories...")
+
+            dept_mappings = generate_taxonomy_mapping_with_ai(
+                dept_categories,
+                shopify_categories,
+                api_key,
+                provider,
+                model,
+                status_fn,
+                department=dept
+            )
+
+            # Merge department mappings into new_mappings
+            new_mappings.update(dept_mappings)
+
+        # Merge new mappings into existing cache
+        updated_cache = merge_new_mappings_into_cache(
+            new_mappings,
+            shopify_taxonomy_hash,
+            our_taxonomy_hash,
+            provider,
+            model,
+            our_taxonomy_path
+        )
+
+        # Save merged cache
+        save_mapping_cache(updated_cache)
+
+        # Verify save
+        verification_cache = load_mapping_cache()
+        if not verification_cache:
+            raise IOError(f"Cache file was created but cannot be loaded: {MAPPING_CACHE_FILE}")
+
+        logging.info(f"✅ Input-scoped mapping complete: {len(new_mappings)} new, {len(updated_cache['mappings'])} total")
+        if status_fn:
+            log_and_status(status_fn, f"✅ Mapped {len(new_mappings)} categories (cache now has {len(updated_cache['mappings'])} total)")
+
+        return updated_cache['mappings']
+
+    # FULL TAXONOMY MODE (legacy behavior - now deprecated)
+    # IMPORTANT: We now ONLY use input-scoped mode to prevent accidentally mapping all 114 categories
+
+    # If cache exists, return it
+    if cache and cache.get('mappings'):
         if status_fn:
             log_and_status(status_fn, f"✅ Using cached taxonomy mappings ({len(cache['mappings'])} categories)")
         logging.info(f"Using cached taxonomy mappings from {cache.get('created_at')}")
         return cache['mappings']
 
-    # Need to generate new mappings
+    # NO CACHE EXISTS: Return empty dict instead of generating all 114 categories
+    # Products will be processed with shopify_category_id = None initially
+    # After processing, input-scoped refresh will automatically map only the collected categories
+    logging.info("ℹ️  No taxonomy mapping cache found")
+    logging.info("ℹ️  Categories will be mapped automatically after processing (input-scoped mode)")
+    logging.info("ℹ️  Only categories from your input file will be mapped (cost-efficient)")
+
+    if status_fn:
+        log_and_status(status_fn, "ℹ️  No taxonomy cache - will auto-map categories from input file after processing")
+
+    return {}
+
+    # DEPRECATED: Full taxonomy generation (all 114 categories) - keeping for reference but unreachable
+    # Need to generate new mappings for ALL categories
     if status_fn:
         log_and_status(status_fn, "🔄 Generating new taxonomy mappings with AI...")
 
@@ -650,15 +1298,46 @@ def get_or_create_taxonomy_mapping(
     if not our_categories:
         raise ValueError(f"Failed to load categories from {our_taxonomy_path}")
 
-    # Generate mappings with AI
-    mappings = generate_taxonomy_mapping_with_ai(
-        our_categories,
-        shopify_categories,
-        api_key,
-        provider,
-        model,
-        status_fn
-    )
+    # Group categories by department for department-specific filtering
+    categories_by_department = {}
+    for cat_path in our_categories:
+        dept = extract_department_from_category(cat_path)
+        if dept:
+            if dept not in categories_by_department:
+                categories_by_department[dept] = []
+            categories_by_department[dept].append(cat_path)
+        else:
+            # Unknown department - add to "None" group
+            if None not in categories_by_department:
+                categories_by_department[None] = []
+            categories_by_department[None].append(cat_path)
+
+    logging.info(f"📊 Grouped {len(our_categories)} categories into {len(categories_by_department)} department(s)")
+
+    # Generate mappings for each department group with AI
+    mappings = {}
+    for dept, dept_categories in categories_by_department.items():
+        if dept:
+            logging.info(f"🎯 Mapping {len(dept_categories)} categories from '{dept}' department")
+            if status_fn:
+                log_and_status(status_fn, f"🤖 Mapping {len(dept_categories)} '{dept}' categories...")
+        else:
+            logging.info(f"🎯 Mapping {len(dept_categories)} categories with unknown department")
+            if status_fn:
+                log_and_status(status_fn, f"🤖 Mapping {len(dept_categories)} categories...")
+
+        dept_mappings = generate_taxonomy_mapping_with_ai(
+            dept_categories,
+            shopify_categories,
+            api_key,
+            provider,
+            model,
+            status_fn,
+            department=dept
+        )
+
+        # Merge department mappings
+        mappings.update(dept_mappings)
 
     # Validate mappings were generated
     if not mappings:
