@@ -296,6 +296,21 @@ EXAMPLE 3 - Product that is NOT SHIPPED with NO existing weight (option 1 NOT in
     return prompt
 
 
+def is_hardscaping_product(category: str) -> bool:
+    """
+    Check if a product is a hardscaping product based on its category.
+
+    Hardscaping products get dual descriptions (homeowner + professional).
+
+    Args:
+        category: The product category (first tag)
+
+    Returns:
+        True if product is in the Pavers and Hardscaping category
+    """
+    return category == "Pavers and Hardscaping"
+
+
 def build_description_prompt(title: str, body_html: str, department: str, voice_tone_doc: str, audience_name: str = None) -> str:
     """
     Build the prompt for Claude to rewrite product description.
@@ -573,10 +588,109 @@ def enhance_product_with_claude(
         enhanced_description = None  # Primary description (goes in body_html)
         description_audience_1 = None  # Audience 1 metafield
         description_audience_2 = None  # Audience 2 metafield
+        professional_description = None  # For hardscaping products only
         total_description_cost = 0
 
-        # Only generate multiple descriptions if both audience names are provided
-        if audience_count == 2 and audience_1_name and audience_2_name:
+        # Check if this is a hardscaping product (requires dual descriptions)
+        is_hardscaping = is_hardscaping_product(category)
+        if is_hardscaping:
+            logging.info(f"🏗️  Hardscaping product detected - generating dual descriptions (Homeowners + Professionals)")
+
+        # Generate dual descriptions for hardscaping products
+        if is_hardscaping:
+            # ========== HARDSCAPING: HOMEOWNER DESCRIPTION ==========
+            if status_fn:
+                log_and_status(status_fn, f"  ✍️  Generating homeowner description...")
+
+            logging.info("=" * 80)
+            logging.info(f"CLAUDE API CALL #2A: HOMEOWNER DESCRIPTION (Hardscaping)")
+            logging.info(f"Product: {title}")
+            logging.info(f"Department: {department}")
+            logging.info(f"Model: {model}")
+            logging.info("=" * 80)
+
+            homeowner_prompt = build_description_prompt(
+                title, body_html, department, voice_tone_doc,
+                "Homeowners (DIY enthusiasts and property owners doing residential projects like patios, walkways, and backyard improvements)"
+            )
+
+            logging.debug(f"Homeowner description prompt (first 500 chars):\n{homeowner_prompt[:500]}...")
+            logging.info(f"Sending description rewriting request for Homeowners...")
+
+            homeowner_response = client.messages.create(
+                model=model,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": homeowner_prompt}]
+            )
+
+            logging.info(f"✅ Homeowner description API call successful")
+            logging.info(f"Token usage - Input: {homeowner_response.usage.input_tokens}, Output: {homeowner_response.usage.output_tokens}")
+
+            homeowner_cost = (homeowner_response.usage.input_tokens * 0.003 / 1000) + (homeowner_response.usage.output_tokens * 0.015 / 1000)
+            logging.info(f"Cost: ${homeowner_cost:.6f}")
+            total_description_cost += homeowner_cost
+
+            enhanced_description = homeowner_response.content[0].text.strip()
+            if enhanced_description.startswith("```"):
+                lines = enhanced_description.split('\n')
+                enhanced_description = '\n'.join(lines[1:-1])
+
+            if not enhanced_description or len(enhanced_description.strip()) == 0:
+                logging.warning(f"⚠️  Claude returned empty homeowner description! Using original body_html")
+                enhanced_description = body_html
+
+            logging.info(f"✅ Homeowner description complete ({len(enhanced_description)} characters)")
+
+            # ========== HARDSCAPING: PROFESSIONAL DESCRIPTION ==========
+            time.sleep(0.5)  # Brief delay between API calls
+
+            if status_fn:
+                log_and_status(status_fn, f"  ✍️  Generating professional description...")
+
+            logging.info("=" * 80)
+            logging.info(f"CLAUDE API CALL #2B: PROFESSIONAL DESCRIPTION (Hardscaping)")
+            logging.info(f"Product: {title}")
+            logging.info(f"Department: {department}")
+            logging.info(f"Model: {model}")
+            logging.info("=" * 80)
+
+            professional_prompt = build_description_prompt(
+                title, body_html, department, voice_tone_doc,
+                "Professional contractors and landscapers (commercial installers focused on efficiency, durability, specifications, and job site requirements)"
+            )
+
+            logging.debug(f"Professional description prompt (first 500 chars):\n{professional_prompt[:500]}...")
+            logging.info(f"Sending description rewriting request for Professionals...")
+
+            professional_response = client.messages.create(
+                model=model,
+                max_tokens=2048,
+                messages=[{"role": "user", "content": professional_prompt}]
+            )
+
+            logging.info(f"✅ Professional description API call successful")
+            logging.info(f"Token usage - Input: {professional_response.usage.input_tokens}, Output: {professional_response.usage.output_tokens}")
+
+            professional_cost = (professional_response.usage.input_tokens * 0.003 / 1000) + (professional_response.usage.output_tokens * 0.015 / 1000)
+            logging.info(f"Cost: ${professional_cost:.6f}")
+            total_description_cost += professional_cost
+
+            professional_description = professional_response.content[0].text.strip()
+            if professional_description.startswith("```"):
+                lines = professional_description.split('\n')
+                professional_description = '\n'.join(lines[1:-1])
+
+            if not professional_description or len(professional_description.strip()) == 0:
+                logging.warning(f"⚠️  Claude returned empty professional description! Using original body_html")
+                professional_description = body_html
+
+            logging.info(f"✅ Professional description complete ({len(professional_description)} characters)")
+
+            if status_fn:
+                log_and_status(status_fn, f"    ✅ Generated dual descriptions: Homeowner ({len(enhanced_description)} chars) + Professional ({len(professional_description)} chars)")
+
+        # Only generate multiple audience descriptions if both audience names are provided (and not hardscaping)
+        elif audience_count == 2 and audience_1_name and audience_2_name:
             # Generate TWO descriptions for different audiences
 
             # Description for Audience 1
@@ -809,6 +923,13 @@ def enhance_product_with_claude(
             logging.info(f"✅ Added purchase_options metafield: {purchase_options}")
         else:
             logging.info(f"ℹ️  purchase_options metafield already exists")
+
+        # Add professional description metafield for hardscaping products
+        if is_hardscaping and professional_description:
+            if add_metafield_if_not_exists(enhanced_product, 'custom', 'professional_description', professional_description, 'multi_line_text_field'):
+                logging.info(f"✅ Added professional_description metafield ({len(professional_description)} chars)")
+            else:
+                logging.info(f"ℹ️  professional_description metafield already exists")
 
         # Add audience descriptions as metafields if multiple audiences
         if audience_count == 2 and description_audience_1 and description_audience_2:
