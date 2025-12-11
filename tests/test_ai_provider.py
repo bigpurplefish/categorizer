@@ -375,7 +375,9 @@ class TestBatchEnhanceProducts:
         cfg = {
             "AI_PROVIDER": "claude",
             "CLAUDE_API_KEY": "test-key",
-            "CLAUDE_MODEL": "claude-sonnet-4-5-20250929"
+            "CLAUDE_MODEL": "claude-sonnet-4-5-20250929",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
         }
         status_fn = Mock()
 
@@ -397,7 +399,12 @@ class TestBatchEnhanceProducts:
     def test_batch_enhance_missing_taxonomy(self, mock_load_md):
         """Test error when taxonomy document is missing."""
         products = [{"title": "Product 1"}]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         mock_load_md.return_value = ""
@@ -409,7 +416,12 @@ class TestBatchEnhanceProducts:
     def test_batch_enhance_missing_voice_tone(self, mock_load_md):
         """Test error when voice/tone document is missing."""
         products = [{"title": "Product 1"}]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         # First call returns taxonomy, second returns empty voice/tone
@@ -444,7 +456,12 @@ class TestBatchEnhanceProducts:
     def test_batch_enhance_with_rate_limiting(self, mock_sleep, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test that rate limiting pause is applied."""
         products = [{"title": f"Product {i}"} for i in range(6)]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
@@ -462,7 +479,12 @@ class TestBatchEnhanceProducts:
         """Test that cached products are used."""
         product = {"title": "Product 1", "body_html": "Desc"}
         products = [product]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         # Set up cache with this product
@@ -494,11 +516,17 @@ class TestBatchEnhanceProducts:
     @patch('src.ai_provider.save_cache')
     @patch('src.ai_provider.load_cache')
     @patch('src.ai_provider.enhance_product')
-    def test_batch_enhance_saves_to_cache(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
+    @patch('src.taxonomy_mapper.generate_contextual_shopify_mapping')
+    def test_batch_enhance_saves_to_cache(self, mock_generate_mapping, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test that enhanced products are saved to cache."""
         product = {"title": "Product 1", "body_html": "Desc"}
         products = [product]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
@@ -508,7 +536,13 @@ class TestBatchEnhanceProducts:
             "product_type": "Pet Supplies",
             "tags": ["Dogs", "Food"],
             "body_html": "<p>Enhanced</p>",
-            "shopify_category_id": "gid://shopify/123"
+            "shopify_category_id": "gid://shopify/123",
+            "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies"
+        }
+        # Mock the taxonomy mapping generation to avoid real API calls
+        mock_generate_mapping.return_value = {
+            "shopify_id": "gid://shopify/123",
+            "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies"
         }
 
         batch_enhance_products(products, cfg, status_fn)
@@ -533,7 +567,12 @@ class TestBatchEnhanceProducts:
             {"title": "Product 2"},
             {"title": "Product 3"}
         ]
-        cfg = {"AI_PROVIDER": "claude", "CLAUDE_API_KEY": "test-key"}
+        cfg = {
+            "AI_PROVIDER": "claude",
+            "CLAUDE_API_KEY": "test-key",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
+        }
         status_fn = Mock()
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
@@ -564,7 +603,9 @@ class TestBatchEnhanceProducts:
         cfg = {
             "AI_PROVIDER": "openai",
             "OPENAI_API_KEY": "test-key",
-            "OPENAI_MODEL": "gpt-5"
+            "OPENAI_MODEL": "gpt-5",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
         }
         status_fn = Mock()
 
@@ -584,27 +625,26 @@ class TestBatchEnhanceProducts:
     @patch('src.ai_provider.save_cache')
     @patch('src.ai_provider.load_cache')
     @patch('src.ai_provider.enhance_product')
-    def test_batch_enhance_openai_shopify_fetch_fails(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
+    @patch('src.taxonomy_search.fetch_shopify_taxonomy_from_github')
+    def test_batch_enhance_openai_shopify_fetch_fails(self, mock_fetch_taxonomy, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test OpenAI batch enhancement when Shopify taxonomy fetch fails."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
         cfg = {
             "AI_PROVIDER": "openai",
             "OPENAI_API_KEY": "test-key",
-            "OPENAI_MODEL": "gpt-5"
+            "OPENAI_MODEL": "gpt-5",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
         }
         status_fn = Mock()
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
         mock_load_md.return_value = "# Test Doc"
         mock_enhance.return_value = {**products[0], "product_type": "Pet Supplies", "tags": ["Dogs"]}
+        mock_fetch_taxonomy.side_effect = Exception("Fetch failed")
 
-        # Mock shopify_api to raise exception when fetching
-        shopify_api_mock = MagicMock()
-        shopify_api_mock.fetch_shopify_taxonomy_from_github.side_effect = Exception("Fetch failed")
-
-        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
-            # Should continue despite Shopify fetch failure
-            result = batch_enhance_products(products, cfg, status_fn)
+        # Should continue despite Shopify fetch failure
+        result = batch_enhance_products(products, cfg, status_fn)
 
         assert len(result) == 1
         assert result[0]["product_type"] == "Pet Supplies"
@@ -613,27 +653,26 @@ class TestBatchEnhanceProducts:
     @patch('src.ai_provider.save_cache')
     @patch('src.ai_provider.load_cache')
     @patch('src.ai_provider.enhance_product')
-    def test_batch_enhance_openai_shopify_returns_empty(self, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
+    @patch('src.taxonomy_search.fetch_shopify_taxonomy_from_github')
+    def test_batch_enhance_openai_shopify_returns_empty(self, mock_fetch_taxonomy, mock_enhance, mock_load_cache, mock_save_cache, mock_load_md):
         """Test OpenAI batch enhancement when Shopify taxonomy returns empty list."""
         products = [{"title": "Product 1", "body_html": "Desc 1"}]
         cfg = {
             "AI_PROVIDER": "openai",
             "OPENAI_API_KEY": "test-key",
-            "OPENAI_MODEL": "gpt-5"
+            "OPENAI_MODEL": "gpt-5",
+            "TAXONOMY_DOC_PATH": "docs/taxonomy.md",
+            "VOICE_TONE_DOC_PATH": "docs/voice.md"
         }
         status_fn = Mock()
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
         mock_load_md.return_value = "# Test Doc"
         mock_enhance.return_value = {**products[0], "product_type": "Pet Supplies", "tags": ["Dogs"]}
+        mock_fetch_taxonomy.return_value = []
 
-        # Mock shopify_api to return empty list
-        shopify_api_mock = MagicMock()
-        shopify_api_mock.fetch_shopify_taxonomy_from_github.return_value = []
-
-        with patch.dict('sys.modules', {'src.shopify_api': shopify_api_mock}):
-            # Should continue despite empty Shopify taxonomy
-            result = batch_enhance_products(products, cfg, status_fn)
+        # Should continue despite empty Shopify taxonomy
+        result = batch_enhance_products(products, cfg, status_fn)
 
         assert len(result) == 1
         assert result[0]["product_type"] == "Pet Supplies"
