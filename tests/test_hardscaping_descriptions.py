@@ -148,14 +148,8 @@ class TestClaudeHardscapingDescriptions:
 
         assert professional_metafield is not None, "professional_description metafield not found"
         assert professional_metafield["namespace"] == "custom"
+        assert professional_metafield["value"] == "<p>Efficient installation for commercial projects.</p>"
         assert professional_metafield["type"] == "rich_text_field"
-        # Value should be Shopify rich text JSON format
-        value_json = json.loads(professional_metafield["value"])
-        assert value_json["type"] == "root"
-        assert len(value_json["children"]) > 0
-        # First child should be a paragraph with the text
-        assert value_json["children"][0]["type"] == "paragraph"
-        assert value_json["children"][0]["children"][0]["value"] == "Efficient installation for commercial projects."
 
     @patch('src.claude_api.anthropic')
     def test_non_hardscaping_generates_single_description(self, mock_anthropic):
@@ -325,13 +319,8 @@ class TestOpenAIHardscapingDescriptions:
                 break
 
         assert professional_metafield is not None
+        assert professional_metafield["value"] == "<p>High-efficiency pavers for commercial installations.</p>"
         assert professional_metafield["type"] == "rich_text_field"
-        # Value should be Shopify rich text JSON format
-        value_json = json.loads(professional_metafield["value"])
-        assert value_json["type"] == "root"
-        assert len(value_json["children"]) > 0
-        assert value_json["children"][0]["type"] == "paragraph"
-        assert value_json["children"][0]["children"][0]["value"] == "High-efficiency pavers for commercial installations."
 
 
 class TestHardscapingDescriptionPrompts:
@@ -454,120 +443,3 @@ class TestHardscapingMetafieldStructure:
         assert result is False
         assert len(product["metafields"]) == 1
         assert product["metafields"][0]["value"] == "<p>Existing</p>"
-
-
-class TestHTMLToShopifyRichText:
-    """Test HTML to Shopify rich text JSON conversion."""
-
-    def test_simple_paragraph(self):
-        """Test converting a simple paragraph."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = "<p>Simple text content.</p>"
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        assert result["type"] == "root"
-        assert len(result["children"]) == 1
-        assert result["children"][0]["type"] == "paragraph"
-        assert result["children"][0]["children"][0]["value"] == "Simple text content."
-
-    def test_heading_levels(self):
-        """Test converting headings h1-h6."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        for level in range(1, 7):
-            html = f"<h{level}>Heading {level}</h{level}>"
-            result = json.loads(html_to_shopify_rich_text(html))
-
-            assert result["children"][0]["type"] == "heading"
-            assert result["children"][0]["level"] == level
-            assert result["children"][0]["children"][0]["value"] == f"Heading {level}"
-
-    def test_bold_text(self):
-        """Test converting bold text."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = "<p><strong>Bold text</strong> and normal.</p>"
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        paragraph = result["children"][0]
-        assert paragraph["children"][0]["value"] == "Bold text"
-        assert paragraph["children"][0].get("bold") is True
-        assert paragraph["children"][1]["value"] == "and normal."
-        assert paragraph["children"][1].get("bold") is None
-
-    def test_italic_text(self):
-        """Test converting italic text."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = "<p><em>Italic text</em> and normal.</p>"
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        paragraph = result["children"][0]
-        assert paragraph["children"][0]["value"] == "Italic text"
-        assert paragraph["children"][0].get("italic") is True
-
-    def test_unordered_list(self):
-        """Test converting unordered list."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = "<ul><li>Item one</li><li>Item two</li></ul>"
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        list_node = result["children"][0]
-        assert list_node["type"] == "list"
-        assert list_node["listType"] == "unordered"
-        assert len(list_node["children"]) == 2
-        assert list_node["children"][0]["type"] == "list-item"
-        assert list_node["children"][0]["children"][0]["value"] == "Item one"
-
-    def test_ordered_list(self):
-        """Test converting ordered list."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = "<ol><li>First</li><li>Second</li></ol>"
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        list_node = result["children"][0]
-        assert list_node["type"] == "list"
-        assert list_node["listType"] == "ordered"
-
-    def test_link(self):
-        """Test converting links."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = '<p><a href="https://example.com">Click here</a></p>'
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        paragraph = result["children"][0]
-        link = paragraph["children"][0]
-        assert link["type"] == "link"
-        assert link["url"] == "https://example.com"
-        assert link["children"][0]["value"] == "Click here"
-
-    def test_empty_html(self):
-        """Test empty HTML returns empty root."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        result = json.loads(html_to_shopify_rich_text(""))
-        assert result["type"] == "root"
-        assert result["children"] == []
-
-    def test_complex_structure(self):
-        """Test converting complex HTML with multiple elements."""
-        from src.product_utils import html_to_shopify_rich_text
-
-        html = """<p>Intro paragraph.</p>
-        <h3>Features</h3>
-        <ul>
-            <li><strong>Feature one:</strong> Description.</li>
-            <li><strong>Feature two:</strong> More info.</li>
-        </ul>"""
-        result = json.loads(html_to_shopify_rich_text(html))
-
-        assert result["type"] == "root"
-        assert len(result["children"]) == 3
-        assert result["children"][0]["type"] == "paragraph"
-        assert result["children"][1]["type"] == "heading"
-        assert result["children"][1]["level"] == 3
-        assert result["children"][2]["type"] == "list"

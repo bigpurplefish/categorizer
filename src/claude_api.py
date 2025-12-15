@@ -23,8 +23,7 @@ from .product_utils import (
     reorder_product_fields,
     should_calculate_shipping_weight,
     is_non_shipped_category,
-    remove_weight_data_from_variants,
-    html_to_shopify_rich_text
+    remove_weight_data_from_variants
 )
 
 
@@ -927,10 +926,8 @@ def enhance_product_with_claude(
 
         # Add professional description metafield for hardscaping products
         if is_hardscaping and professional_description:
-            # Convert HTML to Shopify rich text JSON format
-            professional_rich_text = html_to_shopify_rich_text(professional_description)
-            if add_metafield_if_not_exists(enhanced_product, 'custom', 'professional_description', professional_rich_text, 'rich_text_field'):
-                logging.info(f"✅ Added professional_description metafield ({len(professional_rich_text)} chars)")
+            if add_metafield_if_not_exists(enhanced_product, 'custom', 'professional_description', professional_description, 'rich_text_field'):
+                logging.info(f"✅ Added professional_description metafield ({len(professional_description)} chars)")
             else:
                 logging.info(f"ℹ️  professional_description metafield already exists")
 
