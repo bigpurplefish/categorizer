@@ -926,7 +926,7 @@ def enhance_product_with_claude(
 
         # Add professional description metafield for hardscaping products
         if is_hardscaping and professional_description:
-            if add_metafield_if_not_exists(enhanced_product, 'custom', 'professional_description', professional_description, 'multi_line_text_field'):
+            if add_metafield_if_not_exists(enhanced_product, 'custom', 'professional_description', professional_description, 'rich_text_field'):
                 logging.info(f"✅ Added professional_description metafield ({len(professional_description)} chars)")
             else:
                 logging.info(f"ℹ️  professional_description metafield already exists")

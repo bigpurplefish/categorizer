@@ -149,7 +149,7 @@ class TestClaudeHardscapingDescriptions:
         assert professional_metafield is not None, "professional_description metafield not found"
         assert professional_metafield["namespace"] == "custom"
         assert professional_metafield["value"] == "<p>Efficient installation for commercial projects.</p>"
-        assert professional_metafield["type"] == "multi_line_text_field"
+        assert professional_metafield["type"] == "rich_text_field"
 
     @patch('src.claude_api.anthropic')
     def test_non_hardscaping_generates_single_description(self, mock_anthropic):
@@ -409,17 +409,17 @@ class TestHardscapingMetafieldStructure:
         assert product["metafields"][0]["namespace"] == "custom"
 
     def test_metafield_uses_correct_type(self):
-        """Test that professional_description uses multi_line_text_field type."""
+        """Test that professional_description uses rich_text_field type."""
         from src.product_utils import add_metafield_if_not_exists
 
         product = {"metafields": []}
 
         add_metafield_if_not_exists(
             product, "custom", "professional_description",
-            "<p>Test</p>", "multi_line_text_field"
+            "<p>Test</p>", "rich_text_field"
         )
 
-        assert product["metafields"][0]["type"] == "multi_line_text_field"
+        assert product["metafields"][0]["type"] == "rich_text_field"
 
     def test_metafield_not_duplicated(self):
         """Test that professional_description is not added if it exists."""
@@ -430,13 +430,13 @@ class TestHardscapingMetafieldStructure:
                 "namespace": "custom",
                 "key": "professional_description",
                 "value": "<p>Existing</p>",
-                "type": "multi_line_text_field"
+                "type": "rich_text_field"
             }]
         }
 
         result = add_metafield_if_not_exists(
             product, "custom", "professional_description",
-            "<p>New</p>", "multi_line_text_field"
+            "<p>New</p>", "rich_text_field"
         )
 
         assert result is False
