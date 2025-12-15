@@ -6,7 +6,140 @@ These utilities ensure consistent product data structure across AI providers.
 
 import json
 import logging
+import re
 from typing import Dict, List, Any
+from html.parser import HTMLParser
+
+
+class HTMLToShopifyRichTextParser(HTMLParser):
+    """
+    Parser to convert HTML to Shopify rich text JSON format.
+
+    Supports: paragraphs, headings (h1-h6), bold, italic, links, ordered/unordered lists.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.children = []  # Root-level children
+        self.stack = []  # Stack of current parent nodes
+        self.current_text_attrs = {}  # bold, italic state
+
+    def _current_parent(self):
+        """Get the current parent node to add children to."""
+        if self.stack:
+            return self.stack[-1].get('children', [])
+        return self.children
+
+    def _flush_text(self, text: str):
+        """Add a text node to the current parent."""
+        if not text:
+            return
+        text_node = {"type": "text", "value": text}
+        if self.current_text_attrs.get('bold'):
+            text_node['bold'] = True
+        if self.current_text_attrs.get('italic'):
+            text_node['italic'] = True
+        self._current_parent().append(text_node)
+
+    def handle_starttag(self, tag, attrs):
+        attrs_dict = dict(attrs)
+
+        if tag == 'p':
+            node = {"type": "paragraph", "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag in ('h1', 'h2', 'h3', 'h4', 'h5', 'h6'):
+            level = int(tag[1])
+            node = {"type": "heading", "level": level, "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag == 'ul':
+            node = {"type": "list", "listType": "unordered", "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag == 'ol':
+            node = {"type": "list", "listType": "ordered", "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag == 'li':
+            node = {"type": "list-item", "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag in ('strong', 'b'):
+            self.current_text_attrs['bold'] = True
+        elif tag in ('em', 'i'):
+            self.current_text_attrs['italic'] = True
+        elif tag == 'a':
+            href = attrs_dict.get('href', '')
+            node = {"type": "link", "url": href, "children": []}
+            self._current_parent().append(node)
+            self.stack.append(node)
+        elif tag == 'br':
+            # Handle line breaks as newline in text
+            self._flush_text("\n")
+
+    def handle_endtag(self, tag):
+        if tag in ('p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a'):
+            if self.stack:
+                self.stack.pop()
+        elif tag in ('strong', 'b'):
+            self.current_text_attrs['bold'] = False
+        elif tag in ('em', 'i'):
+            self.current_text_attrs['italic'] = False
+
+    def handle_data(self, data):
+        text = data.strip()
+        if text:
+            self._flush_text(text)
+
+    def get_result(self) -> dict:
+        """Return the Shopify rich text JSON structure."""
+        return {
+            "type": "root",
+            "children": self.children
+        }
+
+
+def html_to_shopify_rich_text(html: str) -> str:
+    """
+    Convert HTML to Shopify rich_text_field JSON format.
+
+    Shopify's rich_text_field requires a specific JSON structure with node types:
+    - root: Container node
+    - paragraph: Text blocks (<p>)
+    - heading: Headings with level 1-6 (<h1>-<h6>)
+    - text: Inline text (supports bold/italic)
+    - link: Hyperlinks (<a>)
+    - list: Ordered or unordered lists (<ul>, <ol>)
+    - list-item: List entries (<li>)
+
+    Args:
+        html: HTML string to convert
+
+    Returns:
+        JSON string in Shopify rich text format
+    """
+    if not html or not html.strip():
+        return json.dumps({"type": "root", "children": []})
+
+    # Clean up HTML - normalize whitespace between tags
+    html = re.sub(r'>\s+<', '><', html)
+
+    parser = HTMLToShopifyRichTextParser()
+    parser.feed(html)
+    result = parser.get_result()
+
+    # If no structured content was parsed, wrap plain text in a paragraph
+    if not result['children']:
+        # Strip HTML tags and create a simple paragraph
+        plain_text = re.sub(r'<[^>]+>', '', html).strip()
+        if plain_text:
+            result['children'] = [{
+                "type": "paragraph",
+                "children": [{"type": "text", "value": plain_text}]
+            }]
+
+    return json.dumps(result)
 
 
 # Purchase option labels for metafield
