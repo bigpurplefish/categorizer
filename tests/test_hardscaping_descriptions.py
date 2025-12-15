@@ -148,8 +148,13 @@ class TestClaudeHardscapingDescriptions:
 
         assert professional_metafield is not None, "professional_description metafield not found"
         assert professional_metafield["namespace"] == "custom"
-        assert professional_metafield["value"] == "<p>Efficient installation for commercial projects.</p>"
         assert professional_metafield["type"] == "rich_text_field"
+        # Value should be Shopify rich text JSON format
+        value_json = json.loads(professional_metafield["value"])
+        assert value_json["type"] == "root"
+        assert len(value_json["children"]) > 0
+        assert value_json["children"][0]["type"] == "paragraph"
+        assert value_json["children"][0]["children"][0]["value"] == "Efficient installation for commercial projects."
 
     @patch('src.claude_api.anthropic')
     def test_non_hardscaping_generates_single_description(self, mock_anthropic):
@@ -319,8 +324,13 @@ class TestOpenAIHardscapingDescriptions:
                 break
 
         assert professional_metafield is not None
-        assert professional_metafield["value"] == "<p>High-efficiency pavers for commercial installations.</p>"
         assert professional_metafield["type"] == "rich_text_field"
+        # Value should be Shopify rich text JSON format
+        value_json = json.loads(professional_metafield["value"])
+        assert value_json["type"] == "root"
+        assert len(value_json["children"]) > 0
+        assert value_json["children"][0]["type"] == "paragraph"
+        assert value_json["children"][0]["children"][0]["value"] == "High-efficiency pavers for commercial installations."
 
 
 class TestHardscapingDescriptionPrompts:
