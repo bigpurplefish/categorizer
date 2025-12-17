@@ -980,7 +980,7 @@ def enhance_product_with_openai(
                 "namespace": "custom",
                 "key": "description_audience_1",
                 "value": description_audience_1,
-                "type": "multi_line_text_field"
+                "type": "rich_text_field"
             })
 
             # Add audience 2 description metafield
@@ -988,7 +988,7 @@ def enhance_product_with_openai(
                 "namespace": "custom",
                 "key": "description_audience_2",
                 "value": description_audience_2,
-                "type": "multi_line_text_field"
+                "type": "rich_text_field"
             })
 
             logging.info(f"Added audience metafields to product:")
