@@ -955,19 +955,21 @@ def enhance_product_with_claude(
                 "type": "json"
             })
 
-            # Add audience 1 description metafield
+            # Add audience 1 description metafield (convert HTML to Shopify rich text JSON)
+            audience_1_rich_text = html_to_shopify_rich_text(description_audience_1)
             enhanced_product['metafields'].append({
                 "namespace": "custom",
                 "key": "description_audience_1",
-                "value": description_audience_1,
+                "value": audience_1_rich_text,
                 "type": "rich_text_field"
             })
 
-            # Add audience 2 description metafield
+            # Add audience 2 description metafield (convert HTML to Shopify rich text JSON)
+            audience_2_rich_text = html_to_shopify_rich_text(description_audience_2)
             enhanced_product['metafields'].append({
                 "namespace": "custom",
                 "key": "description_audience_2",
-                "value": description_audience_2,
+                "value": audience_2_rich_text,
                 "type": "rich_text_field"
             })
 
