@@ -243,53 +243,6 @@ class TestEnhanceProduct:
         with pytest.raises(ValueError, match="Unknown AI provider"):
             enhance_product(product, "", "", cfg)
 
-    @patch('src.ai_provider.claude_api')
-    def test_enhance_with_audience_config_single(self, mock_claude_api):
-        """Test enhancing with single audience configuration."""
-        product = {"title": "Test Product"}
-        cfg = {
-            "AI_PROVIDER": "claude",
-            "CLAUDE_API_KEY": "test-key",
-            "AUDIENCE_COUNT": 1,
-            "AUDIENCE_1_NAME": "Homeowners"
-        }
-
-        mock_claude_api.enhance_product_with_claude.return_value = product
-
-        enhance_product(product, "", "", cfg)
-
-        # Verify audience_config was passed (positional arg 6)
-        call_args = mock_claude_api.enhance_product_with_claude.call_args
-        audience_config = call_args[0][6]  # 7th positional argument
-        assert audience_config["count"] == 1
-        assert audience_config["audience_1_name"] == "Homeowners"
-
-    @patch('src.ai_provider.claude_api')
-    def test_enhance_with_audience_config_dual(self, mock_claude_api):
-        """Test enhancing with dual audience configuration."""
-        product = {"title": "Test Product"}
-        cfg = {
-            "AI_PROVIDER": "claude",
-            "CLAUDE_API_KEY": "test-key",
-            "AUDIENCE_COUNT": 2,
-            "AUDIENCE_1_NAME": "Homeowners",
-            "AUDIENCE_2_NAME": "Contractors",
-            "AUDIENCE_TAB_1_LABEL": "For Home",
-            "AUDIENCE_TAB_2_LABEL": "For Work"
-        }
-
-        mock_claude_api.enhance_product_with_claude.return_value = product
-
-        enhance_product(product, "", "", cfg)
-
-        # Verify audience_config was passed (positional arg 6)
-        call_args = mock_claude_api.enhance_product_with_claude.call_args
-        audience_config = call_args[0][6]  # 7th positional argument
-        assert audience_config["count"] == 2
-        assert audience_config["audience_1_name"] == "Homeowners"
-        assert audience_config["audience_2_name"] == "Contractors"
-
-
 class TestGenerateCollectionDescription:
     """Test generate_collection_description function."""
 

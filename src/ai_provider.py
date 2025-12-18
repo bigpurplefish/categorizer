@@ -94,33 +94,6 @@ def enhance_product(
     """
     provider = cfg.get("AI_PROVIDER", "claude").lower()
 
-    # Extract audience configuration from cfg
-    audience_config = None
-    audience_count = cfg.get("AUDIENCE_COUNT", 1)
-    if audience_count == 2:
-        audience_1_name = cfg.get("AUDIENCE_1_NAME", "").strip()
-        audience_2_name = cfg.get("AUDIENCE_2_NAME", "").strip()
-        tab_1_label = cfg.get("AUDIENCE_TAB_1_LABEL", "").strip()
-        tab_2_label = cfg.get("AUDIENCE_TAB_2_LABEL", "").strip()
-
-        # Only create config if both audience names are provided
-        if audience_1_name and audience_2_name:
-            audience_config = {
-                "count": 2,
-                "audience_1_name": audience_1_name,
-                "audience_2_name": audience_2_name,
-                "tab_1_label": tab_1_label,
-                "tab_2_label": tab_2_label
-            }
-    elif audience_count == 1:
-        # Single audience mode
-        audience_1_name = cfg.get("AUDIENCE_1_NAME", "").strip()
-        if audience_1_name:
-            audience_config = {
-                "count": 1,
-                "audience_1_name": audience_1_name
-            }
-
     if provider == "openai":
         # Use OpenAI
         api_key = cfg.get("OPENAI_API_KEY", "").strip()
@@ -139,7 +112,6 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            audience_config,
             taxonomy_mappings
         )
 
@@ -160,7 +132,6 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            audience_config,
             taxonomy_mappings
         )
 
@@ -355,8 +326,7 @@ def batch_enhance_products(
                 model,
                 completion_window=cfg.get("BATCH_COMPLETION_WINDOW", "24h"),
                 poll_interval=cfg.get("BATCH_POLL_INTERVAL", 60),
-                status_fn=status_fn,
-                audience_config=None
+                status_fn=status_fn
             )
         elif provider == "claude":
             return claude_api.enhance_products_with_claude_batch(
@@ -366,8 +336,7 @@ def batch_enhance_products(
                 api_key,
                 model,
                 poll_interval=cfg.get("BATCH_POLL_INTERVAL", 60),
-                status_fn=status_fn,
-                audience_config=None
+                status_fn=status_fn
             )
 
     # Standard mode (not batch)

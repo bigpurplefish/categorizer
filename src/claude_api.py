@@ -426,7 +426,6 @@ def enhance_product_with_claude(
     api_key: str,
     model: str,
     status_fn=None,
-    audience_config: Dict = None,
     taxonomy_mappings: Dict = None
 ) -> Dict:
     """
@@ -576,19 +575,8 @@ def enhance_product_with_claude(
             # Removed: lifestyle_images_prompt handling
         time.sleep(0.5)  # Brief delay between API calls
 
-        # Determine number of audiences from config
-        audience_count = 1
-        audience_1_name = None
-        audience_2_name = None
-        if audience_config:
-            audience_count = audience_config.get("count", 1)
-            audience_1_name = audience_config.get("audience_1_name", "").strip()
-            audience_2_name = audience_config.get("audience_2_name", "").strip()
-
-        # Generate description(s) based on audience count
-        enhanced_description = None  # Primary description (goes in body_html)
-        description_audience_1 = None  # Audience 1 metafield
-        description_audience_2 = None  # Audience 2 metafield
+        # Generate description(s)
+        enhanced_description = None  # Primary description (goes in descriptionHtml)
         professional_description = None  # For hardscaping products only
         total_description_cost = 0
 
@@ -690,116 +678,19 @@ def enhance_product_with_claude(
             if status_fn:
                 log_and_status(status_fn, f"    ✅ Generated dual descriptions: Homeowner ({len(enhanced_description)} chars) + Professional ({len(professional_description)} chars)")
 
-        # Only generate multiple audience descriptions if both audience names are provided (and not hardscaping)
-        elif audience_count == 2 and audience_1_name and audience_2_name:
-            # Generate TWO descriptions for different audiences
-
-            # Description for Audience 1
-            if status_fn:
-                log_and_status(status_fn, f"  ✍️  Generating description for {audience_1_name}...")
-
-            logging.info("=" * 80)
-            logging.info(f"CLAUDE API CALL #2A: DESCRIPTION FOR AUDIENCE 1 ({audience_1_name})")
-            logging.info(f"Product: {title}")
-            logging.info(f"Department: {department}")
-            logging.info(f"Model: {model}")
-            logging.info("=" * 80)
-
-            description_prompt_1 = build_description_prompt(title, body_html, department, voice_tone_doc, audience_1_name)
-
-            logging.debug(f"Description prompt for Audience 1 (first 500 chars):\n{description_prompt_1[:500]}...")
-            logging.debug(f"Full prompt length: {len(description_prompt_1)} characters")
-            logging.info(f"Sending description rewriting request for {audience_1_name}...")
-
-            description_response_1 = client.messages.create(
-                model=model,
-                max_tokens=2048,
-                messages=[{"role": "user", "content": description_prompt_1}]
-            )
-
-            logging.info(f"✅ Audience 1 description API call successful")
-            logging.info(f"Token usage - Input: {description_response_1.usage.input_tokens}, Output: {description_response_1.usage.output_tokens}")
-
-            description_1_cost = (description_response_1.usage.input_tokens * 0.003 / 1000) + (description_response_1.usage.output_tokens * 0.015 / 1000)
-            logging.info(f"Cost: ${description_1_cost:.6f}")
-            total_description_cost += description_1_cost
-
-            description_audience_1 = description_response_1.content[0].text.strip()
-            if description_audience_1.startswith("```"):
-                lines = description_audience_1.split('\n')
-                description_audience_1 = '\n'.join(lines[1:-1])
-
-            if not description_audience_1 or len(description_audience_1.strip()) == 0:
-                logging.warning(f"⚠️  Claude returned empty description for {audience_1_name}! Using original body_html")
-                description_audience_1 = body_html
-
-            logging.info(f"✅ Description for {audience_1_name} complete ({len(description_audience_1)} characters)")
-
-            # Description for Audience 2
-            time.sleep(0.5)  # Brief delay between API calls
-
-            if status_fn:
-                log_and_status(status_fn, f"  ✍️  Generating description for {audience_2_name}...")
-
-            logging.info("=" * 80)
-            logging.info(f"CLAUDE API CALL #2B: DESCRIPTION FOR AUDIENCE 2 ({audience_2_name})")
-            logging.info(f"Product: {title}")
-            logging.info(f"Department: {department}")
-            logging.info(f"Model: {model}")
-            logging.info("=" * 80)
-
-            description_prompt_2 = build_description_prompt(title, body_html, department, voice_tone_doc, audience_2_name)
-
-            logging.debug(f"Description prompt for Audience 2 (first 500 chars):\n{description_prompt_2[:500]}...")
-            logging.debug(f"Full prompt length: {len(description_prompt_2)} characters")
-            logging.info(f"Sending description rewriting request for {audience_2_name}...")
-
-            description_response_2 = client.messages.create(
-                model=model,
-                max_tokens=2048,
-                messages=[{"role": "user", "content": description_prompt_2}]
-            )
-
-            logging.info(f"✅ Audience 2 description API call successful")
-            logging.info(f"Token usage - Input: {description_response_2.usage.input_tokens}, Output: {description_response_2.usage.output_tokens}")
-
-            description_2_cost = (description_response_2.usage.input_tokens * 0.003 / 1000) + (description_response_2.usage.output_tokens * 0.015 / 1000)
-            logging.info(f"Cost: ${description_2_cost:.6f}")
-            total_description_cost += description_2_cost
-
-            description_audience_2 = description_response_2.content[0].text.strip()
-            if description_audience_2.startswith("```"):
-                lines = description_audience_2.split('\n')
-                description_audience_2 = '\n'.join(lines[1:-1])
-
-            if not description_audience_2 or len(description_audience_2.strip()) == 0:
-                logging.warning(f"⚠️  Claude returned empty description for {audience_2_name}! Using original body_html")
-                description_audience_2 = body_html
-
-            logging.info(f"✅ Description for {audience_2_name} complete ({len(description_audience_2)} characters)")
-
-            # Use Audience 1 description as primary body_html
-            enhanced_description = description_audience_1
-
-            if status_fn:
-                log_and_status(status_fn, f"    ✅ Generated 2 audience descriptions ({len(description_audience_1)} + {len(description_audience_2)} chars)")
-
         else:
-            # Single audience mode (default behavior)
+            # Standard description rewriting (non-hardscaping products)
             if status_fn:
-                audience_label = f" for {audience_1_name}" if audience_1_name else ""
-                log_and_status(status_fn, f"  ✍️  Rewriting description{audience_label}...")
+                log_and_status(status_fn, f"  ✍️  Rewriting description...")
 
             logging.info("=" * 80)
             logging.info(f"CLAUDE API CALL #2: DESCRIPTION REWRITING")
             logging.info(f"Product: {title}")
             logging.info(f"Department: {department}")
-            if audience_1_name:
-                logging.info(f"Audience: {audience_1_name}")
             logging.info(f"Model: {model}")
             logging.info("=" * 80)
 
-            description_prompt = build_description_prompt(title, body_html, department, voice_tone_doc, audience_1_name if audience_1_name else None)
+            description_prompt = build_description_prompt(title, body_html, department, voice_tone_doc)
 
             logging.debug(f"Description prompt (first 500 chars):\n{description_prompt[:500]}...")
             logging.debug(f"Full prompt length: {len(description_prompt)} characters")
@@ -933,50 +824,6 @@ def enhance_product_with_claude(
                 logging.info(f"✅ Added professional_description metafield ({len(professional_rich_text)} chars)")
             else:
                 logging.info(f"ℹ️  professional_description metafield already exists")
-
-        # Add audience descriptions as metafields if multiple audiences
-        if audience_count == 2 and description_audience_1 and description_audience_2:
-            # Metafields array already initialized above
-            pass
-
-            # Add audience configuration metafield (for Liquid template)
-            audience_metadata = {
-                "count": 2,
-                "audience_1_name": audience_1_name,
-                "audience_2_name": audience_2_name,
-                "tab_1_label": audience_config.get("tab_1_label", audience_1_name),
-                "tab_2_label": audience_config.get("tab_2_label", audience_2_name)
-            }
-
-            enhanced_product['metafields'].append({
-                "namespace": "custom",
-                "key": "audience_config",
-                "value": json.dumps(audience_metadata),
-                "type": "json"
-            })
-
-            # Add audience 1 description metafield (convert HTML to Shopify rich text JSON)
-            audience_1_rich_text = html_to_shopify_rich_text(description_audience_1)
-            enhanced_product['metafields'].append({
-                "namespace": "custom",
-                "key": "description_audience_1",
-                "value": audience_1_rich_text,
-                "type": "rich_text_field"
-            })
-
-            # Add audience 2 description metafield (convert HTML to Shopify rich text JSON)
-            audience_2_rich_text = html_to_shopify_rich_text(description_audience_2)
-            enhanced_product['metafields'].append({
-                "namespace": "custom",
-                "key": "description_audience_2",
-                "value": audience_2_rich_text,
-                "type": "rich_text_field"
-            })
-
-            logging.info(f"Added audience metafields to product:")
-            logging.info(f"  - audience_config: {audience_metadata}")
-            logging.info(f"  - description_audience_1: {len(description_audience_1)} chars")
-            logging.info(f"  - description_audience_2: {len(description_audience_2)} chars")
 
         # ========== SHOPIFY CATEGORY MATCHING ==========
         # Use intelligent pre-computed mapping (one-time AI mapping, cached)
@@ -1234,8 +1081,7 @@ def enhance_products_with_claude_batch(
     api_key: str,
     model: str,
     poll_interval: int = 60,
-    status_fn=None,
-    audience_config: Dict = None
+    status_fn=None
 ) -> List[Dict]:
     """
     Enhance multiple products using Anthropic Message Batches API for 50% cost savings.
@@ -1253,7 +1099,6 @@ def enhance_products_with_claude_batch(
         model: Claude model ID
         poll_interval: Seconds between status polls (default: 60)
         status_fn: Optional status update function
-        audience_config: Optional audience configuration dict
 
     Returns:
         List of enhanced product dictionaries
