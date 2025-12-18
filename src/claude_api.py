@@ -803,11 +803,12 @@ def enhance_product_with_claude(
         if 'metafields' not in enhanced_product:
             enhanced_product['metafields'] = []
 
-        # Add REQUIRED hide_online_price metafield (check for duplicates)
-        if add_metafield_if_not_exists(enhanced_product, 'custom', 'hide_online_price', 'true', 'boolean'):
-            logging.info(f"✅ Added hide_online_price metafield")
-        else:
-            logging.info(f"ℹ️  hide_online_price metafield already exists")
+        # Add hide_online_price metafield for hardscaping products only
+        if is_hardscaping:
+            if add_metafield_if_not_exists(enhanced_product, 'custom', 'hide_online_price', 'true', 'boolean'):
+                logging.info(f"✅ Added hide_online_price metafield (hardscaping product)")
+            else:
+                logging.info(f"ℹ️  hide_online_price metafield already exists")
 
         # Add purchase_options as product-level metafield (formatted as object mapping)
         purchase_options_value = format_purchase_options_metafield(purchase_options)
