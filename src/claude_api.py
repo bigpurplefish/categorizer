@@ -350,6 +350,7 @@ Your task:
    - Focus on benefits and use cases, not just features
    - Ensure proper punctuation (no encoded characters like \u2019)
    - Make it unique and natural (vary your phrasing)
+   - ALWAYS add a space after colons (e.g., "Material: Concrete" NOT "Material:Concrete")
 
 4. SEO Optimization requirements:
    - Include relevant keywords naturally in the first paragraph

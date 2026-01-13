@@ -5,6 +5,7 @@ config.json
 
 # Cache directory (keep directory, ignore contents)
 cache/*.json
+cache/*.pkl
 !cache/.gitkeep
 
 # Coverage files

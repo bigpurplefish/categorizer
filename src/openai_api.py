@@ -1439,6 +1439,7 @@ CRITICAL RULES:
 - Every sentence must add value - cut all fluff
 - Combine features with benefits - never list features without context
 - Use subheadings to help mobile users scan quickly
+- ALWAYS add a space after colons (e.g., "Material: Concrete" NOT "Material:Concrete")
 
 Return ONLY the HTML description. No explanations, notes, or markdown code blocks. Just clean, mobile-optimized HTML that will go directly into body_html."""
 
