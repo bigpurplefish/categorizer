@@ -381,9 +381,13 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
         log_and_status(status, f"Products to process: {len(products_to_process)}")
         log_and_status(status, "")
 
-        # Handle skip mode - load existing output
+        # Load existing output file to preserve products outside processing range
+        # This applies to: skip mode (always), or overwrite mode with a range specified
         existing_products = {}
-        if processing_mode == "skip" and os.path.exists(output_file):
+        range_specified = start_record > 0 or end_record > 0
+        should_load_existing = processing_mode == "skip" or range_specified
+
+        if should_load_existing and os.path.exists(output_file):
             try:
                 with open(output_file, 'r', encoding='utf-8') as f:
                     existing_data = json.load(f)
@@ -530,8 +534,8 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             app.after(0, lambda: messagebox.showerror("Enhancement Error", error_msg))
             return
 
-        # Merge with existing products if in skip mode
-        if processing_mode == "skip" and existing_products:
+        # Merge with existing products (preserves products outside processed range)
+        if existing_products:
             log_and_status(status, "")
             log_and_status(status, "Merging with existing products...")
 
