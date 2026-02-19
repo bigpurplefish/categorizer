@@ -246,6 +246,137 @@ def open_api_settings(cfg, parent):
     ).pack(side="right")
 
 
+def _merge_images_only(all_products, start_idx, end_idx, output_file, status, app):
+    """
+    Merge image data from fresh collector input into existing output file.
+    Copies product-level images array and variant-level image_id fields
+    while preserving all AI-generated data (taxonomy, descriptions, weights).
+
+    Args:
+        all_products: All products from input file
+        start_idx: 0-based start index for processing range
+        end_idx: End index for slicing (None = end of list)
+        output_file: Path to existing output file
+        status: Status callback function
+        app: Main application window
+    """
+    # Validate output file exists
+    if not os.path.exists(output_file):
+        error_msg = (
+            "Update Images Only requires a previously processed output file.\n\n"
+            f"Output file not found:\n{output_file}\n\n"
+            "Process products first using Skip or Overwrite mode."
+        )
+        log_and_status(status, error_msg, "error")
+        app.after(0, lambda: messagebox.showerror("Output File Required", error_msg))
+        return
+
+    # Load existing output
+    try:
+        with open(output_file, 'r', encoding='utf-8') as f:
+            existing_data = json.load(f)
+            if not isinstance(existing_data, list):
+                raise ValueError("Output file must contain a JSON array of products")
+    except Exception as e:
+        error_msg = f"Failed to load output file: {e}"
+        log_and_status(status, error_msg, "error")
+        app.after(0, lambda: messagebox.showerror("Load Error", error_msg))
+        return
+
+    # Index existing products by title
+    existing_by_title = {}
+    for product in existing_data:
+        title = product.get("title", "")
+        if title:
+            existing_by_title[title] = product
+
+    log_and_status(status, f"Loaded {len(existing_by_title)} existing products from output file")
+    log_and_status(status, "")
+
+    # Get input products in range
+    products_in_range = all_products[start_idx:end_idx]
+
+    updated_count = 0
+    not_found_count = 0
+    variant_update_count = 0
+
+    for i, input_product in enumerate(products_in_range):
+        actual_record_num = start_idx + i + 1
+        title = input_product.get("title", "")
+
+        if not title:
+            log_and_status(status, f"⚠ Record #{actual_record_num}: No title, skipping")
+            continue
+
+        if title not in existing_by_title:
+            log_and_status(status, f"⚠ Record #{actual_record_num}: '{title}' not found in output, skipping")
+            not_found_count += 1
+            continue
+
+        existing_product = existing_by_title[title]
+
+        # Copy product-level images array
+        if "images" in input_product:
+            existing_product["images"] = input_product["images"]
+
+        # Match variants by SKU and copy image_id
+        input_variants = input_product.get("variants", [])
+        existing_variants = existing_product.get("variants", [])
+
+        if input_variants and existing_variants:
+            # Index input variants by SKU
+            input_variants_by_sku = {}
+            for v in input_variants:
+                sku = v.get("sku", "")
+                if sku:
+                    input_variants_by_sku[sku] = v
+
+            # Update existing variants
+            for existing_variant in existing_variants:
+                sku = existing_variant.get("sku", "")
+                if sku and sku in input_variants_by_sku:
+                    input_variant = input_variants_by_sku[sku]
+                    if "image_id" in input_variant:
+                        existing_variant["image_id"] = input_variant["image_id"]
+                        variant_update_count += 1
+
+        updated_count += 1
+        log_and_status(status, f"✅ Record #{actual_record_num}: Updated images for '{title}'")
+
+    # Save merged output
+    log_and_status(status, "")
+    log_and_status(status, f"Saving to: {output_file}")
+
+    try:
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(existing_data, f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        error_msg = f"Failed to save output file: {e}"
+        log_and_status(status, error_msg, "error")
+        app.after(0, lambda: messagebox.showerror("Save Error", error_msg))
+        return
+
+    # Report results
+    log_and_status(status, "")
+    log_and_status(status, "=" * 80)
+    log_and_status(status, "IMAGE UPDATE COMPLETE")
+    log_and_status(status, "=" * 80)
+    log_and_status(status, f"Products updated: {updated_count}")
+    if variant_update_count > 0:
+        log_and_status(status, f"Variant image_ids updated: {variant_update_count}")
+    if not_found_count > 0:
+        log_and_status(status, f"Products not found in output: {not_found_count}")
+    log_and_status(status, f"Total products in output: {len(existing_data)}")
+    log_and_status(status, "")
+
+    app.after(0, lambda: messagebox.showinfo(
+        "Image Update Complete",
+        f"Updated images for {updated_count} product(s).\n"
+        f"{'(' + str(not_found_count) + ' not found in output)' if not_found_count else ''}\n\n"
+        f"Output saved to:\n{output_file}"
+    ))
+
+
 def process_products_worker(cfg, status_queue, button_control_queue, app):
     """
     Worker thread function to process products with AI enhancement.
@@ -380,6 +511,11 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             log_and_status(status, f"Record range: {start_record or 1} to {end_record or len(all_products)}")
         log_and_status(status, f"Products to process: {len(products_to_process)}")
         log_and_status(status, "")
+
+        # Images-only mode: bypass AI processing entirely
+        if processing_mode == "images_only":
+            _merge_images_only(all_products, start_idx, end_idx, output_file, status, app)
+            return
 
         # Load existing output file to preserve products outside processing range
         # This applies to: skip mode (always), or overwrite mode with a range specified
@@ -1013,7 +1149,9 @@ def build_gui():
 
     ToolTip(help_icon, text="Choose how to handle records that have already been processed.\n\n"
                            "Skip: Skip records that already have processed data.\n"
-                           "Overwrite: Re-process all records, overwriting existing data.\n\n"
+                           "Overwrite: Re-process all records, overwriting existing data.\n"
+                           "Update Images Only: Copy images from input to output without AI processing.\n"
+                           "  Use after re-running a collector to pick up new images.\n\n"
                            "Tip: Use 'Skip' to resume interrupted processing.", bootstyle="info")
 
     # Radio buttons for processing mode
@@ -1039,6 +1177,15 @@ def build_gui():
         bootstyle="warning"
     )
     overwrite_radio.pack(side="left")
+
+    images_only_radio = tb.Radiobutton(
+        mode_frame,
+        text="Update Images Only",
+        variable=processing_mode_var,
+        value="images_only",
+        bootstyle="info"
+    )
+    images_only_radio.pack(side="left", padx=(20, 0))
 
     def on_mode_change(*args):
         cfg["PROCESSING_MODE"] = processing_mode_var.get()
