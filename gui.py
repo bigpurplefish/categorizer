@@ -283,12 +283,17 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
         app.after(0, lambda: messagebox.showerror("Load Error", error_msg))
         return
 
-    # Index existing products by title
+    # Index existing products by title and by variant SKUs
     existing_by_title = {}
+    existing_by_sku = {}
     for product in existing_data:
         title = product.get("title", "")
         if title:
             existing_by_title[title] = product
+        for v in product.get("variants", []):
+            sku = v.get("sku", "")
+            if sku:
+                existing_by_sku[sku] = product
 
     log_and_status(status, f"Loaded {len(existing_by_title)} existing products from output file")
     log_and_status(status, "")
@@ -309,11 +314,21 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
             continue
 
         if title not in existing_by_title:
-            log_and_status(status, f"⚠ Record #{actual_record_num}: '{title}' not found in output, skipping")
-            not_found_count += 1
-            continue
-
-        existing_product = existing_by_title[title]
+            # Fallback: match by variant SKU
+            matched_product = None
+            for v in input_product.get("variants", []):
+                sku = v.get("sku", "")
+                if sku and sku in existing_by_sku:
+                    matched_product = existing_by_sku[sku]
+                    break
+            if not matched_product:
+                log_and_status(status, f"⚠ Record #{actual_record_num}: '{title}' not found in output, skipping")
+                not_found_count += 1
+                continue
+            existing_product = matched_product
+            log_and_status(status, f"🔗 Record #{actual_record_num}: '{title}' matched by SKU to '{existing_product.get('title', '')}'")
+        else:
+            existing_product = existing_by_title[title]
 
         # Copy product-level images array
         if "images" in input_product:
