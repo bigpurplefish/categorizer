@@ -304,6 +304,7 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
     updated_count = 0
     not_found_count = 0
     variant_update_count = 0
+    metafield_update_count = 0
 
     for i, input_product in enumerate(products_in_range):
         actual_record_num = start_idx + i + 1
@@ -354,6 +355,11 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
                     if "image_id" in input_variant:
                         existing_variant["image_id"] = input_variant["image_id"]
                         variant_update_count += 1
+                    # Update variant metafields from new input
+                    # (variant metafields come from collector, not from AI processing)
+                    if "metafields" in input_variant:
+                        existing_variant["metafields"] = input_variant["metafields"]
+                        metafield_update_count += 1
 
         updated_count += 1
         log_and_status(status, f"✅ Record #{actual_record_num}: Updated images for '{title}'")
@@ -379,6 +385,8 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
     log_and_status(status, f"Products updated: {updated_count}")
     if variant_update_count > 0:
         log_and_status(status, f"Variant image_ids updated: {variant_update_count}")
+    if metafield_update_count > 0:
+        log_and_status(status, f"Variant metafields updated: {metafield_update_count}")
     if not_found_count > 0:
         log_and_status(status, f"Products not found in output: {not_found_count}")
     log_and_status(status, f"Total products in output: {len(existing_data)}")
