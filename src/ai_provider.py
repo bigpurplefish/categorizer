@@ -112,7 +112,9 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            taxonomy_mappings
+            taxonomy_mappings,
+            gemini_api_key=cfg.get("GEMINI_API_KEY", ""),
+            gemini_model=cfg.get("GEMINI_MODEL", "gemini-2.0-flash")
         )
 
     elif provider == "claude":
@@ -132,7 +134,9 @@ def enhance_product(
             api_key,
             model,
             status_fn,
-            taxonomy_mappings
+            taxonomy_mappings,
+            gemini_api_key=cfg.get("GEMINI_API_KEY", ""),
+            gemini_model=cfg.get("GEMINI_MODEL", "gemini-2.0-flash")
         )
 
     else:

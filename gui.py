@@ -104,7 +104,7 @@ def open_api_settings(cfg, parent):
     """Open the API settings dialog."""
     settings_window = tb.Toplevel(parent)
     settings_window.title("API Settings")
-    settings_window.geometry("700x450")
+    settings_window.geometry("700x580")
     settings_window.transient(parent)
     settings_window.grab_set()
 
@@ -154,15 +154,50 @@ def open_api_settings(cfg, parent):
         text="Your OpenAI API key\n(Get one at: platform.openai.com)"
     )
 
-    # Batch Mode Settings Section
+    # Gemini Settings Section
     tb.Label(
         main_frame,
-        text="Batch Processing (50% Cost Savings)",
+        text="Gemini Settings (Image Alt Text)",
         font=("Arial", 11, "bold")
     ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(20, 5))
 
     tb.Separator(main_frame, orient="horizontal").grid(
         row=6, column=0, columnspan=2, sticky="ew", pady=(0, 10)
+    )
+
+    # Gemini API Key
+    tb.Label(main_frame, text="Gemini API Key:").grid(
+        row=7, column=0, sticky="w", padx=5, pady=5
+    )
+    gemini_api_key_var = tb.StringVar(value=cfg.get("GEMINI_API_KEY", ""))
+    gemini_api_key_entry = tb.Entry(main_frame, textvariable=gemini_api_key_var, width=50, show="*")
+    gemini_api_key_entry.grid(row=7, column=1, sticky="ew", padx=5, pady=5)
+    ToolTip(
+        gemini_api_key_entry,
+        text="Your Google Gemini API key\n(Get one at: aistudio.google.com)"
+    )
+
+    # Gemini Model
+    tb.Label(main_frame, text="Gemini Model:").grid(
+        row=8, column=0, sticky="w", padx=5, pady=5
+    )
+    gemini_model_var = tb.StringVar(value=cfg.get("GEMINI_MODEL", "gemini-2.0-flash"))
+    gemini_model_entry = tb.Entry(main_frame, textvariable=gemini_model_var, width=50)
+    gemini_model_entry.grid(row=8, column=1, sticky="ew", padx=5, pady=5)
+    ToolTip(
+        gemini_model_entry,
+        text="Gemini model to use for image alt text generation\n(e.g. gemini-2.0-flash)"
+    )
+
+    # Batch Mode Settings Section
+    tb.Label(
+        main_frame,
+        text="Batch Processing (50% Cost Savings)",
+        font=("Arial", 11, "bold")
+    ).grid(row=9, column=0, columnspan=2, sticky="w", pady=(20, 5))
+
+    tb.Separator(main_frame, orient="horizontal").grid(
+        row=10, column=0, columnspan=2, sticky="ew", pady=(0, 10)
     )
 
     # Enable Batch Mode checkbox
@@ -173,7 +208,7 @@ def open_api_settings(cfg, parent):
         variable=batch_mode_var,
         bootstyle="success-round-toggle"
     )
-    batch_mode_check.grid(row=7, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+    batch_mode_check.grid(row=11, column=0, columnspan=2, sticky="w", padx=5, pady=5)
     ToolTip(
         batch_mode_check,
         text="Enable batch processing for 50% cost savings\n"
@@ -189,7 +224,7 @@ def open_api_settings(cfg, parent):
 
     # Info label about AI
     info_frame = tb.Frame(main_frame)
-    info_frame.grid(row=8, column=0, columnspan=2, sticky="ew", pady=10)
+    info_frame.grid(row=12, column=0, columnspan=2, sticky="ew", pady=10)
 
     info_label = tb.Label(
         info_frame,
@@ -213,6 +248,8 @@ def open_api_settings(cfg, parent):
         """Save settings and close dialog."""
         cfg["CLAUDE_API_KEY"] = claude_api_key_var.get().strip()
         cfg["OPENAI_API_KEY"] = openai_api_key_var.get().strip()
+        cfg["GEMINI_API_KEY"] = gemini_api_key_var.get().strip()
+        cfg["GEMINI_MODEL"] = gemini_model_var.get().strip()
         cfg["USE_BATCH_MODE"] = batch_mode_var.get()
 
         save_config(cfg)

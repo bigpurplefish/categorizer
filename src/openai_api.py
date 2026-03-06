@@ -283,7 +283,9 @@ def enhance_product_with_openai(
     api_key: str,
     model: str,
     status_fn=None,
-    taxonomy_mappings: Dict = None
+    taxonomy_mappings: Dict = None,
+    gemini_api_key: str = "",
+    gemini_model: str = "gemini-2.0-flash"
 ) -> Dict:
     """
     Enhance a single product using OpenAI API.
@@ -737,6 +739,9 @@ def enhance_product_with_openai(
         enhanced_product = product.copy()
         enhanced_product['product_type'] = department
 
+        # Preserve collector-supplied metafields before reordering
+        existing_metafields = list(enhanced_product.get('metafields', []))
+
         # Remove fields we want to reorder (shopify fields, tags, metafields)
         # This ensures we can insert them in the exact order we want
         for field in ['shopify_category_id', 'shopify_category', 'tags', 'metafields']:
@@ -798,9 +803,9 @@ def enhance_product_with_openai(
 
         logging.info(f"✅ Updated {len(enhanced_product.get('variants', []))} variants with shipping weight: {final_shipping_weight} lbs")
 
-        # Initialize metafields array if not present
+        # Initialize metafields array if not present (preserving collector-supplied metafields)
         if 'metafields' not in enhanced_product:
-            enhanced_product['metafields'] = []
+            enhanced_product['metafields'] = list(existing_metafields)
 
         # Add hide_online_price metafield for hardscaping products only
         if is_hardscaping:
@@ -866,6 +871,43 @@ def enhance_product_with_openai(
         logging.info(f"Shopify category ID: {shopify_id}")
         logging.info(f"Description length: {len(enhanced_description)} characters")
         logging.info("=" * 80)
+
+        # ========== IMAGE ALT TEXT GENERATION (Gemini) ==========
+        from .claude_api import split_alt_hashtags, generate_seo_alt_texts
+
+        images = enhanced_product.get('images', [])
+        hashtagged_indices = []
+        hashtagged_images = []
+        for img_i, img in enumerate(images):
+            if isinstance(img, dict) and img.get('alt') and '#' in img.get('alt', ''):
+                hashtagged_indices.append(img_i)
+                hashtagged_images.append(img)
+
+        if hashtagged_images and gemini_api_key:
+            logging.info(f"Generating SEO alt text for {len(hashtagged_images)} images via Gemini...")
+            if status_fn:
+                log_and_status(status_fn, f"  Generating SEO alt text for {len(hashtagged_images)} images...")
+
+            seo_texts = generate_seo_alt_texts(
+                hashtagged_images, title, department, category,
+                gemini_api_key, gemini_model, status_fn
+            )
+
+            if seo_texts and len(seo_texts) == len(hashtagged_images):
+                for j, idx in enumerate(hashtagged_indices):
+                    original_alt = enhanced_product['images'][idx]['alt']
+                    _, hashtags = split_alt_hashtags(original_alt)
+                    new_alt = f"{seo_texts[j]} {hashtags}".strip()
+                    enhanced_product['images'][idx]['alt'] = new_alt
+                    logging.debug(f"  Image {idx+1} alt: {original_alt!r} -> {new_alt!r}")
+
+                logging.info(f"Updated {len(seo_texts)} image alt texts with SEO descriptions")
+                if status_fn:
+                    log_and_status(status_fn, f"  ✅ Updated {len(seo_texts)} image alt texts")
+            else:
+                logging.warning("Skipping image alt text update — Gemini returned unusable results")
+        elif hashtagged_images and not gemini_api_key:
+            logging.debug("Skipping image alt text generation — no GEMINI_API_KEY configured")
 
         # Remove weight_data from non-shipped products
         if not should_calculate_shipping_weight(purchase_options):
