@@ -4,13 +4,51 @@ OpenAI API integration for product taxonomy assignment and description rewriting
 
 import json
 import logging
+import time
 from typing import Dict, List
 
 try:
-    from openai import OpenAI
+    from openai import OpenAI, BadRequestError as OpenAIBadRequestError
 except ImportError:
     OpenAI = None
+    OpenAIBadRequestError = None
     logging.warning("openai package not installed. OpenAI features will be disabled.")
+
+
+def _chat_completions_create_with_retry(client, max_retries: int = 3, retry_delay: float = 2.5, **api_params):
+    """
+    Wrapper around client.chat.completions.create() that retries on transient 400 errors.
+
+    The OpenAI SDK's built-in retry covers 408/409/429/5xx but not 400. GPT-5 occasionally
+    returns a misleading 400 "could not parse the JSON body" on valid requests that succeed
+    on retry.
+
+    Only retries if the error message contains "could not parse the JSON body". All other
+    400 errors (invalid model, token limit exceeded, etc.) are re-raised immediately.
+    """
+    last_exc = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return client.chat.completions.create(**api_params)
+        except Exception as exc:
+            if OpenAIBadRequestError is not None and isinstance(exc, OpenAIBadRequestError):
+                msg = str(exc).lower()
+                if "could not parse the json body" in msg:
+                    last_exc = exc
+                    if attempt < max_retries:
+                        logging.warning(
+                            f"OpenAI 400 'could not parse the JSON body' (attempt {attempt}/{max_retries}), "
+                            f"retrying in {retry_delay}s..."
+                        )
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        logging.error(
+                            f"OpenAI 400 'could not parse the JSON body' after {max_retries} attempts, giving up."
+                        )
+                        raise
+            raise
+    raise last_exc
 
 from .config import log_and_status
 from .product_utils import (
@@ -216,7 +254,7 @@ If no good match exists, return: {{"category_fullName": null, "reasoning": "No s
             api_params["max_tokens"] = 512
             logging.debug(f"Using max_tokens=512 for model {model}")
 
-        response = client.chat.completions.create(**api_params)
+        response = _chat_completions_create_with_retry(client, **api_params)
 
         # Log response details
         logging.info(f"✅ Shopify category matching API call successful")
@@ -380,7 +418,7 @@ def enhance_product_with_openai(
             api_params["max_tokens"] = 16000
             logging.debug(f"Using max_tokens=16000 for model {model}")
 
-        taxonomy_response = client.chat.completions.create(**api_params)
+        taxonomy_response = _chat_completions_create_with_retry(client, **api_params)
 
         # Log response details
         logging.info(f"✅ Taxonomy API call successful")
@@ -594,7 +632,7 @@ def enhance_product_with_openai(
             else:
                 api_params["max_tokens"] = 2048
 
-            homeowner_response = client.chat.completions.create(**api_params)
+            homeowner_response = _chat_completions_create_with_retry(client, **api_params)
 
             logging.info(f"✅ Homeowner description API call successful")
             logging.info(f"Token usage - Prompt: {homeowner_response.usage.prompt_tokens}, Completion: {homeowner_response.usage.completion_tokens}, Total: {homeowner_response.usage.total_tokens}")
@@ -645,7 +683,7 @@ def enhance_product_with_openai(
             else:
                 api_params["max_tokens"] = 2048
 
-            professional_response = client.chat.completions.create(**api_params)
+            professional_response = _chat_completions_create_with_retry(client, **api_params)
 
             logging.info(f"✅ Professional description API call successful")
             logging.info(f"Token usage - Prompt: {professional_response.usage.prompt_tokens}, Completion: {professional_response.usage.completion_tokens}, Total: {professional_response.usage.total_tokens}")
@@ -698,7 +736,7 @@ def enhance_product_with_openai(
             else:
                 api_params["max_tokens"] = 2048
 
-            description_response = client.chat.completions.create(**api_params)
+            description_response = _chat_completions_create_with_retry(client, **api_params)
 
             logging.info(f"✅ Description API call successful")
             logging.info(f"Response ID: {description_response.id}")
@@ -1032,7 +1070,7 @@ def generate_collection_description(
             api_params["max_tokens"] = 512
             logging.debug(f"Using max_tokens=512 for model {model}")
 
-        response = client.chat.completions.create(**api_params)
+        response = _chat_completions_create_with_retry(client, **api_params)
 
         # Log response details
         logging.info(f"✅ Collection description API call successful")
