@@ -45,9 +45,10 @@ def save_cache(cache: Dict):
 
 
 def compute_product_hash(product: Dict) -> str:
-    """Compute a hash of the product's title and body_html to detect changes."""
+    """Compute a hash of the product's title and description to detect changes."""
     title = product.get('title', '')
-    body_html = product.get('body_html', '')
+    # Support both GraphQL (descriptionHtml) and REST (body_html) field names
+    body_html = product.get('descriptionHtml') or product.get('body_html', '')
     content = f"{title}||{body_html}"
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
@@ -467,7 +468,7 @@ def batch_enhance_products(
                     tags.append(cached_data['subcategory'])
 
                 enhanced_product['tags'] = tags
-                enhanced_product['body_html'] = cached_data.get('enhanced_description', product.get('body_html', ''))
+                enhanced_product['descriptionHtml'] = cached_data.get('enhanced_description', product.get('descriptionHtml', product.get('body_html', '')))
 
                 # Restore Shopify category ID and name from cache
                 enhanced_product['shopify_category_id'] = cached_data.get('shopify_category_id', None)
@@ -601,7 +602,7 @@ def batch_enhance_products(
                 "department": department,
                 "category": category,
                 "subcategory": subcategory,
-                "enhanced_description": enhanced_product.get('body_html', ''),
+                "enhanced_description": enhanced_product.get('descriptionHtml', enhanced_product.get('body_html', '')),
                 "shopify_category_id": enhanced_product.get('shopify_category_id', None)
             }
             enhanced_count += 1

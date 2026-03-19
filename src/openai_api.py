@@ -613,9 +613,11 @@ def enhance_product_with_openai(
             logging.info(f"Model: {model}")
             logging.info("=" * 80)
 
+            specs = product.get("_specs", {})
             homeowner_prompt = _build_description_prompt(
                 title, body_html, department, voice_tone_doc,
-                "Homeowners (DIY enthusiasts and property owners doing residential projects like patios, walkways, and backyard improvements)"
+                "Homeowners (DIY enthusiasts and property owners doing residential projects like patios, walkways, and backyard improvements)",
+                specs=specs
             )
 
             logging.debug(f"Homeowner description prompt (first 500 chars):\n{homeowner_prompt[:500]}...")
@@ -666,7 +668,8 @@ def enhance_product_with_openai(
 
             professional_prompt = _build_description_prompt(
                 title, body_html, department, voice_tone_doc,
-                "Professional contractors and landscapers (commercial installers focused on efficiency, durability, specifications, and job site requirements)"
+                "Professional contractors and landscapers (commercial installers focused on efficiency, durability, specifications, and job site requirements)",
+                specs=specs
             )
 
             logging.debug(f"Professional description prompt (first 500 chars):\n{professional_prompt[:500]}...")
@@ -703,6 +706,12 @@ def enhance_product_with_openai(
 
             logging.info(f"✅ Professional description complete ({len(professional_description)} characters)")
 
+            # Prepend specs HTML block to both descriptions
+            if specs:
+                specs_html = _build_specs_html(specs)
+                enhanced_description = specs_html + enhanced_description
+                professional_description = specs_html + professional_description
+
             if status_fn:
                 log_and_status(status_fn, f"    ✅ Generated dual descriptions: Homeowner ({len(enhanced_description)} chars) + Professional ({len(professional_description)} chars)")
 
@@ -718,7 +727,8 @@ def enhance_product_with_openai(
             logging.info(f"Model: {model}")
             logging.info("=" * 80)
 
-            description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc)
+            specs = product.get("_specs", {})
+            description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc, specs=specs)
 
             logging.debug(f"Description prompt (first 500 chars):\n{description_prompt[:500]}...")
             logging.debug(f"Full prompt length: {len(description_prompt)} characters")
@@ -765,6 +775,11 @@ def enhance_product_with_openai(
                 enhanced_description = body_html
 
             logging.info(f"✅ Description rewritten ({len(enhanced_description)} characters)")
+
+            # Prepend specs HTML block to description
+            if specs:
+                specs_html = _build_specs_html(specs)
+                enhanced_description = specs_html + enhanced_description
 
             if status_fn:
                 log_and_status(status_fn, f"    ✅ Description rewritten ({len(enhanced_description)} characters)")
@@ -1419,7 +1434,35 @@ def is_hardscaping_product(category: str) -> bool:
     return category == "Pavers and Hardscaping"
 
 
-def _build_description_prompt(title: str, body_html: str, department: str, voice_tone_doc: str, audience_name: str = None) -> str:
+def _build_specs_html(specs: dict) -> str:
+    """Build an HTML specifications block from extracted product specs."""
+    label_map = {
+        "weight": "Weight",
+        "volume": "Volume",
+        "pack_size": "Pack Size",
+        "container": "Package Type",
+        "dimensions": "Dimensions",
+        "size_class": "Size",
+    }
+    items = []
+    for key in ["weight", "volume", "dimensions", "pack_size", "container", "size_class"]:
+        if key in specs and specs[key]:
+            label = label_map.get(key, key.replace("_", " ").title())
+            items.append(f"<li><strong>{label}:</strong> {specs[key]}</li>")
+
+    if not items:
+        return ""
+
+    return (
+        '<div class="product-specs">\n'
+        "<ul>\n"
+        + "\n".join(items)
+        + "\n</ul>\n"
+        "</div>\n"
+    )
+
+
+def _build_description_prompt(title: str, body_html: str, department: str, voice_tone_doc: str, audience_name: str = None, specs: dict = None) -> str:
     """Build the prompt for description rewriting - mobile-optimized for maximum conversion."""
     audience_context = f"\nTarget Audience: {audience_name}" if audience_name else ""
 
@@ -1432,7 +1475,13 @@ Product information:
 - Department: {department}
 - Current Description: {body_html}{audience_context}
 
-CRITICAL: Write for MOBILE-FIRST experience. Most customers will read this on phones where text appears longer and attention spans are shorter.
+"""
+
+    if specs:
+        prompt += f"- Product Specifications: {json.dumps(specs)}"
+        prompt += "\n\nIMPORTANT: The product has the following specifications that should be naturally referenced in your description where relevant. Do NOT list them mechanically — weave them into the narrative. For example, mention the weight when discussing value or portability, mention pack size when discussing convenience.\n\n"
+
+    prompt += """CRITICAL: Write for MOBILE-FIRST experience. Most customers will read this on phones where text appears longer and attention spans are shorter.
 {f"AUDIENCE: Tailor this description specifically for {audience_name}. Use language, benefits, and examples that resonate with this audience." if audience_name else ""}
 
 STRUCTURE & LENGTH:
@@ -1868,7 +1917,8 @@ def enhance_products_with_openai_batch(
             # Support both GraphQL (descriptionHtml) and REST (body_html) field names
             body_html = product.get('descriptionHtml') or product.get('body_html', '')
 
-            description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc, None)
+            specs = product.get("_specs", {})
+            description_prompt = _build_description_prompt(title, body_html, department, voice_tone_doc, None, specs=specs)
 
             api_params = {
                 "model": model,

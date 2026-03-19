@@ -462,7 +462,7 @@ class TestBatchEnhanceProducts:
         assert len(result) == 1
         assert result[0]["product_type"] == "Pet Supplies"
         assert result[0]["tags"] == ["Dogs", "Food"]
-        assert result[0]["body_html"] == "<p>Enhanced</p>"
+        assert result[0]["descriptionHtml"] == "<p>Enhanced</p>"
         assert result[0]["shopify_category_id"] == "gid://shopify/123"
 
     @patch('src.ai_provider.load_markdown_file')
@@ -488,7 +488,7 @@ class TestBatchEnhanceProducts:
             **product,
             "product_type": "Pet Supplies",
             "tags": ["Dogs", "Food"],
-            "body_html": "<p>Enhanced</p>",
+            "descriptionHtml": "<p>Enhanced</p>",
             "shopify_category_id": "gid://shopify/123",
             "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies"
         }

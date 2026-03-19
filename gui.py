@@ -16,6 +16,7 @@ import json
 import logging
 import threading
 import queue
+import time
 from tkinter import filedialog, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
@@ -297,6 +298,8 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
         status: Status callback function
         app: Main application window
     """
+    run_start_time = time.monotonic()
+
     # Validate output file exists
     if not os.path.exists(output_file):
         error_msg = (
@@ -427,6 +430,9 @@ def _merge_images_only(all_products, start_idx, end_idx, output_file, status, ap
     if not_found_count > 0:
         log_and_status(status, f"Products not found in output: {not_found_count}")
     log_and_status(status, f"Total products in output: {len(existing_data)}")
+    elapsed = time.monotonic() - run_start_time
+    mins, secs = divmod(int(elapsed), 60)
+    log_and_status(status, f"Elapsed time: {mins}m {secs:02d}s")
     log_and_status(status, "")
 
     app.after(0, lambda: messagebox.showinfo(
@@ -484,6 +490,7 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             return
 
         # Setup logging
+        run_start_time = time.monotonic()
         setup_logging(log_file)
         logging.info("=" * 80)
         logging.info(f"STARTING PRODUCT CATEGORIZATION")
@@ -807,6 +814,9 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
         if skipped_count > 0:
             log_and_status(status, f"⏭ Skipped: {skipped_count} already-processed products")
         log_and_status(status, f"📁 Total in output file: {len(all_enhanced)} products")
+        elapsed = time.monotonic() - run_start_time
+        mins, secs = divmod(int(elapsed), 60)
+        log_and_status(status, f"Elapsed time: {mins}m {secs:02d}s")
         log_and_status(status, "=" * 80)
 
         logging.info("=" * 80)
