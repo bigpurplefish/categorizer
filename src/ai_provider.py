@@ -53,6 +53,64 @@ def compute_product_hash(product: Dict) -> str:
     return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
 
+# Valid taxonomy: {department: {category: [subcategories]}}
+VALID_TAXONOMY = {
+    "Landscape and Construction": {
+        "Aggregates": ["Stone", "Soil", "Mulch", "Sand", "Ice Melt"],
+        "Pavers and Hardscaping": ["Slabs", "Pavers", "Retaining Walls", "Wall Caps",
+                                    "Steps & Treads", "Edging & Borders",
+                                    "Joint Sand & Polymeric Sand", "Sealers & Cleaners",
+                                    "Base Materials & Geotextiles", "Accessories"],
+        "Paving Tools & Equipment": ["Hand Tools", "Compactors", "Screeds"],
+        "Paving & Construction Supplies": ["Edging", "Adhesives", "Spikes", "Sealers"],
+    },
+    "Lawn and Garden": {
+        "Garden Tools": ["Shovels", "Wheelbarrows", "Pruners", "Gloves"],
+        "Garden Supplies": ["Fertilizers", "Soil Conditioners", "Planters", "Watering Systems"],
+        "Garden Decor": ["Flags", "Stakes", "Chimes", "Statues"],
+    },
+    "Home and Gift": {
+        "Home Decor": ["Candles", "Wall Art", "Seasonal Decorations"],
+        "Gifts": ["Gift Cards", "Novelty Items", "Themed Gifts"],
+    },
+    "Pet Supplies": {
+        "Dogs": ["Bedding", "Carriers", "Chews", "Cleaning", "Collars", "Crates",
+                 "Food", "Grooming", "Harnesses", "Training Tools", "Toys", "Treats",
+                 "Waste", "Accessories"],
+        "Cats": ["Bedding", "Carriers", "Cleaning", "Collars", "Food", "Grooming",
+                 "Harnesses", "Toys", "Treats", "Waste", "Accessories"],
+        "Birds": ["Cages", "Health", "Seeds", "Toys", "Treats", "Accessories"],
+        "Small Pets": ["Bedding", "Cages", "Food", "Accessories"],
+    },
+    "Livestock and Farm": {
+        "Horses": ["Feed", "Health", "Tack & Equipment", "Accessories"],
+        "Chickens": ["Feed", "Supplies (coops, feeders, waterers)", "Accessories"],
+        "Goats": ["Feed", "Health", "Accessories"],
+        "Sheep": ["Feed", "Health", "Accessories"],
+        "General Farm Supplies": ["Buckets", "Scoops", "Fencing", "Tools"],
+    },
+    "Hunting and Fishing": {
+        "Deer": ["Attractants", "Minerals & Supplements", "Gear", "Food Plots", "Scent Control"],
+    },
+}
+
+
+def validate_taxonomy(department: str, category: str, subcategory: str = "") -> tuple[bool, str]:
+    """Validate department/category/subcategory against the canonical taxonomy.
+
+    Returns:
+        (is_valid, reason) — reason is empty string if valid.
+    """
+    if department not in VALID_TAXONOMY:
+        return False, f"Unknown department: '{department}'"
+    dept_categories = VALID_TAXONOMY[department]
+    if category not in dept_categories:
+        return False, f"Unknown category: '{category}' in department '{department}'"
+    if subcategory and subcategory not in dept_categories[category]:
+        return False, f"Unknown subcategory: '{subcategory}' in '{department} > {category}'"
+    return True, ""
+
+
 def load_markdown_file(file_path: str) -> str:
     """Load a markdown file and return its contents."""
     try:
@@ -228,7 +286,7 @@ def batch_enhance_products(
     force_refresh_cache: bool = False,
     force_refresh_taxonomy: bool = False,
     force_refresh_embeddings: bool = False
-) -> List[Dict]:
+) -> tuple[List[Dict], List[Dict]]:
     """
     Enhance multiple products with configured AI provider using caching.
 
@@ -245,7 +303,8 @@ def batch_enhance_products(
         force_refresh_embeddings: If True, regenerate embeddings cache ($0.03 one-time cost)
 
     Returns:
-        List of enhanced product dictionaries
+        Tuple of (enhanced_products, taxonomy_failures) where taxonomy_failures
+        contains products that didn't fit the valid taxonomy.
 
     Raises:
         Exception: Stops immediately on API failure
@@ -423,6 +482,7 @@ def batch_enhance_products(
         cached_products = {}  # Clear cache in memory (will re-process everything)
 
     enhanced_products = []
+    taxonomy_failures = []
     enhanced_count = 0
     cached_count = 0
     collected_categories = set()  # Collect unique categories for input-scoped refresh
@@ -500,6 +560,16 @@ def batch_enhance_products(
                 department = cached_data.get('department', '')
                 category = cached_data.get('category', '')
                 subcategory = cached_data.get('subcategory', '')
+
+                # Validate cached taxonomy against canonical values
+                is_valid, reason = validate_taxonomy(department, category, subcategory)
+                if not is_valid:
+                    log_and_status(status_fn, f"  ⚠️ Taxonomy failure (cached): {reason} — skipping product")
+                    logging.warning(f"Taxonomy failure for cached '{title}': {reason}")
+                    enhanced_product['_taxonomy_failure_reason'] = reason
+                    taxonomy_failures.append(enhanced_product)
+                    continue
+
                 if department and category:
                     if subcategory:
                         collected_categories.add(f"{department} > {category} > {subcategory}")
@@ -527,6 +597,15 @@ def batch_enhance_products(
             tags = enhanced_product.get('tags', [])
             category = tags[0] if tags else ''
             subcategory = tags[1] if len(tags) > 1 else ''
+
+            # Validate taxonomy against canonical values
+            is_valid, reason = validate_taxonomy(department, category, subcategory)
+            if not is_valid:
+                log_and_status(status_fn, f"  ⚠️ Taxonomy failure: {reason} — skipping product")
+                logging.warning(f"Taxonomy failure for '{title}': {reason}")
+                enhanced_product['_taxonomy_failure_reason'] = reason
+                taxonomy_failures.append(enhanced_product)
+                continue
 
             # HYBRID LAZY MAPPING: Generate Shopify category mapping on-the-fly with product context + semantic search
             if shopify_categories and embeddings_cache and taxonomy_mappings is not None and department and category:
@@ -666,6 +745,8 @@ def batch_enhance_products(
     log_and_status(status_fn, "=" * 80)
     log_and_status(status_fn, f"✅ Newly enhanced: {enhanced_count}")
     log_and_status(status_fn, f"♻️  Used cache: {cached_count}")
+    if taxonomy_failures:
+        log_and_status(status_fn, f"⚠️ Taxonomy failures: {len(taxonomy_failures)}")
     log_and_status(status_fn, f"📊 Total processed: {total}")
 
-    return enhanced_products
+    return enhanced_products, taxonomy_failures

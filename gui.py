@@ -716,7 +716,7 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
         log_and_status(status, "")
 
         try:
-            enhanced_products = batch_enhance_products(
+            enhanced_products, taxonomy_failures = batch_enhance_products(
                 products,
                 cfg,
                 status,
@@ -729,6 +729,8 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
 
             log_and_status(status, "")
             log_and_status(status, f"Enhanced {len(enhanced_products)} products")
+            if taxonomy_failures:
+                log_and_status(status, f"⚠️ {len(taxonomy_failures)} product(s) skipped — taxonomy mismatch")
 
         except Exception as e:
             error_msg = f"AI enhancement failed: {e}"
@@ -805,12 +807,25 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             app.after(0, lambda: messagebox.showerror("Save Error", error_msg))
             return
 
+        # Save taxonomy failures to separate file
+        if taxonomy_failures:
+            base, ext = os.path.splitext(output_file)
+            failures_file = f"{base}_taxonomy_failures{ext}"
+            try:
+                with open(failures_file, 'w', encoding='utf-8') as f:
+                    json.dump(taxonomy_failures, f, indent=2, ensure_ascii=False)
+                log_and_status(status, f"⚠️ Saved {len(taxonomy_failures)} taxonomy failures to: {failures_file}")
+            except Exception as e:
+                log_and_status(status, f"Failed to save taxonomy failures: {e}", "error")
+
         # Success!
         log_and_status(status, "")
         log_and_status(status, "=" * 80)
         log_and_status(status, "CATEGORIZATION COMPLETE")
         log_and_status(status, "=" * 80)
         log_and_status(status, f"✅ Enhanced: {len(enhanced_products)} products")
+        if taxonomy_failures:
+            log_and_status(status, f"⚠️ Taxonomy failures: {len(taxonomy_failures)} products")
         if skipped_count > 0:
             log_and_status(status, f"⏭ Skipped: {skipped_count} already-processed products")
         log_and_status(status, f"📁 Total in output file: {len(all_enhanced)} products")
@@ -1577,6 +1592,15 @@ def build_gui():
         width=15
     )
     clear_btn.pack(side="left", padx=5)
+
+    exit_btn = tb.Button(
+        button_frame,
+        text="Exit",
+        command=app.destroy,
+        bootstyle="secondary-outline",
+        width=10
+    )
+    exit_btn.pack(side="right", padx=5)
 
     # Real-time window geometry tracking
     resize_timer = None

@@ -201,7 +201,7 @@ def main():
     # Process products
     print_status("Starting AI enhancement...")
     try:
-        enhanced_products = batch_enhance_products(
+        enhanced_products, taxonomy_failures = batch_enhance_products(
             products,
             config,
             status_fn=print_status,
@@ -210,6 +210,8 @@ def main():
             force_refresh_embeddings=config.get("FORCE_REFRESH_EMBEDDINGS", False)
         )
         print_status(f"Enhanced {len(enhanced_products)} products")
+        if taxonomy_failures:
+            print_status(f"⚠️ {len(taxonomy_failures)} product(s) skipped — taxonomy mismatch")
     except Exception as e:
         print(f"ERROR: Failed to enhance products: {e}")
         return 1
@@ -222,6 +224,14 @@ def main():
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump({"products": enhanced_products}, f, indent=2, ensure_ascii=False)
+
+        # Save taxonomy failures to separate file
+        if taxonomy_failures:
+            failures_path = output_path.with_stem(output_path.stem + "_taxonomy_failures")
+            with open(failures_path, 'w', encoding='utf-8') as f:
+                json.dump(taxonomy_failures, f, indent=2, ensure_ascii=False)
+            print_status(f"⚠️ Saved {len(taxonomy_failures)} taxonomy failures to {failures_path}")
+
         print_status("✓ Complete!")
     except Exception as e:
         print(f"ERROR: Failed to save output file: {e}")

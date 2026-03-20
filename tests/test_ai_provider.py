@@ -338,14 +338,15 @@ class TestBatchEnhanceProducts:
         mock_load_md.return_value = "# Test Doc"
         mock_enhance.side_effect = [
             {**products[0], "product_type": "Pet Supplies", "tags": ["Dogs"]},
-            {**products[1], "product_type": "Lawn and Garden", "tags": ["Tools"]}
+            {**products[1], "product_type": "Lawn and Garden", "tags": ["Garden Tools"]}
         ]
 
-        result = batch_enhance_products(products, cfg, status_fn)
+        enhanced, failures = batch_enhance_products(products, cfg, status_fn)
 
-        assert len(result) == 2
-        assert result[0]["product_type"] == "Pet Supplies"
-        assert result[1]["product_type"] == "Lawn and Garden"
+        assert len(enhanced) == 2
+        assert len(failures) == 0
+        assert enhanced[0]["product_type"] == "Pet Supplies"
+        assert enhanced[1]["product_type"] == "Lawn and Garden"
         mock_save_cache.assert_called()
 
     @patch('src.ai_provider.load_markdown_file')
@@ -419,7 +420,7 @@ class TestBatchEnhanceProducts:
 
         mock_load_cache.return_value = {"cache_version": "1.0", "products": {}}
         mock_load_md.return_value = "# Test Doc"
-        mock_enhance.return_value = {"title": "Enhanced", "product_type": "Dept", "tags": []}
+        mock_enhance.return_value = {"title": "Enhanced", "product_type": "Pet Supplies", "tags": ["Dogs"]}
 
         batch_enhance_products(products, cfg, status_fn)
 
@@ -457,13 +458,14 @@ class TestBatchEnhanceProducts:
         }
         mock_load_md.return_value = "# Test Doc"
 
-        result = batch_enhance_products(products, cfg, status_fn)
+        enhanced, failures = batch_enhance_products(products, cfg, status_fn)
 
-        assert len(result) == 1
-        assert result[0]["product_type"] == "Pet Supplies"
-        assert result[0]["tags"] == ["Dogs", "Food"]
-        assert result[0]["descriptionHtml"] == "<p>Enhanced</p>"
-        assert result[0]["shopify_category_id"] == "gid://shopify/123"
+        assert len(enhanced) == 1
+        assert len(failures) == 0
+        assert enhanced[0]["product_type"] == "Pet Supplies"
+        assert enhanced[0]["tags"] == ["Dogs", "Food"]
+        assert enhanced[0]["descriptionHtml"] == "<p>Enhanced</p>"
+        assert enhanced[0]["shopify_category_id"] == "gid://shopify/123"
 
     @patch('src.ai_provider.load_markdown_file')
     @patch('src.ai_provider.save_cache')
@@ -567,10 +569,10 @@ class TestBatchEnhanceProducts:
         mock_enhance.return_value = {**products[0], "product_type": "Pet Supplies", "tags": ["Dogs"]}
         mock_fetch_taxonomy.return_value = [{"id": "cat1", "name": "Category 1"}]
 
-        result = batch_enhance_products(products, cfg, status_fn)
+        enhanced, failures = batch_enhance_products(products, cfg, status_fn)
 
-        assert len(result) == 1
-        assert result[0]["product_type"] == "Pet Supplies"
+        assert len(enhanced) == 1
+        assert enhanced[0]["product_type"] == "Pet Supplies"
         # Verify Shopify taxonomy was fetched for OpenAI
         mock_fetch_taxonomy.assert_called_once()
 
@@ -597,10 +599,10 @@ class TestBatchEnhanceProducts:
         mock_fetch_taxonomy.side_effect = Exception("Fetch failed")
 
         # Should continue despite Shopify fetch failure
-        result = batch_enhance_products(products, cfg, status_fn)
+        enhanced, failures = batch_enhance_products(products, cfg, status_fn)
 
-        assert len(result) == 1
-        assert result[0]["product_type"] == "Pet Supplies"
+        assert len(enhanced) == 1
+        assert enhanced[0]["product_type"] == "Pet Supplies"
 
     @patch('src.ai_provider.load_markdown_file')
     @patch('src.ai_provider.save_cache')
@@ -625,7 +627,7 @@ class TestBatchEnhanceProducts:
         mock_fetch_taxonomy.return_value = []
 
         # Should continue despite empty Shopify taxonomy
-        result = batch_enhance_products(products, cfg, status_fn)
+        enhanced, failures = batch_enhance_products(products, cfg, status_fn)
 
-        assert len(result) == 1
-        assert result[0]["product_type"] == "Pet Supplies"
+        assert len(enhanced) == 1
+        assert enhanced[0]["product_type"] == "Pet Supplies"
