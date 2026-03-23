@@ -95,20 +95,54 @@ VALID_TAXONOMY = {
 }
 
 
-def validate_taxonomy(department: str, category: str, subcategory: str = "") -> tuple[bool, str]:
+def _normalize_taxonomy_value(value: str, valid_values: list[str]) -> str:
+    """Try to match a value to its canonical form in valid_values.
+
+    Handles cases where the AI returns a shortened name (e.g. "Supplies"
+    instead of "Supplies (coops, feeders, waterers)").
+
+    Returns the canonical value if a unique prefix match is found,
+    otherwise returns the original value unchanged.
+    """
+    if value in valid_values:
+        return value
+    # Try prefix matching: "Supplies" matches "Supplies (coops, feeders, waterers)"
+    matches = [v for v in valid_values if v.startswith(value)]
+    if len(matches) == 1:
+        return matches[0]
+    # Try case-insensitive exact match
+    lower_map = {v.lower(): v for v in valid_values}
+    if value.lower() in lower_map:
+        return lower_map[value.lower()]
+    return value
+
+
+def validate_taxonomy(department: str, category: str, subcategory: str = "") -> tuple[bool, str, str, str, str]:
     """Validate department/category/subcategory against the canonical taxonomy.
 
     Returns:
-        (is_valid, reason) — reason is empty string if valid.
+        (is_valid, reason, normalized_dept, normalized_cat, normalized_subcat)
+        reason is empty string if valid. Normalized values may differ from
+        input if a close match was found (e.g. "Supplies" → "Supplies (coops, feeders, waterers)").
     """
+    # Normalize department
+    department = _normalize_taxonomy_value(department, list(VALID_TAXONOMY.keys()))
     if department not in VALID_TAXONOMY:
-        return False, f"Unknown department: '{department}'"
+        return False, f"Unknown department: '{department}'", department, category, subcategory
     dept_categories = VALID_TAXONOMY[department]
+
+    # Normalize category
+    category = _normalize_taxonomy_value(category, list(dept_categories.keys()))
     if category not in dept_categories:
-        return False, f"Unknown category: '{category}' in department '{department}'"
-    if subcategory and subcategory not in dept_categories[category]:
-        return False, f"Unknown subcategory: '{subcategory}' in '{department} > {category}'"
-    return True, ""
+        return False, f"Unknown category: '{category}' in department '{department}'", department, category, subcategory
+
+    # Normalize subcategory
+    if subcategory:
+        subcategory = _normalize_taxonomy_value(subcategory, dept_categories[category])
+        if subcategory not in dept_categories[category]:
+            return False, f"Unknown subcategory: '{subcategory}' in '{department} > {category}'", department, category, subcategory
+
+    return True, "", department, category, subcategory
 
 
 def load_markdown_file(file_path: str) -> str:
@@ -562,13 +596,18 @@ def batch_enhance_products(
                 subcategory = cached_data.get('subcategory', '')
 
                 # Validate cached taxonomy against canonical values
-                is_valid, reason = validate_taxonomy(department, category, subcategory)
+                is_valid, reason, department, category, subcategory = validate_taxonomy(department, category, subcategory)
                 if not is_valid:
                     log_and_status(status_fn, f"  ⚠️ Taxonomy failure (cached): {reason} — skipping product")
                     logging.warning(f"Taxonomy failure for cached '{title}': {reason}")
                     enhanced_product['_taxonomy_failure_reason'] = reason
                     taxonomy_failures.append(enhanced_product)
                     continue
+
+                # Apply normalized taxonomy values back to product
+                enhanced_product['product_type'] = department
+                tags = [category] + ([subcategory] if subcategory else [])
+                enhanced_product['tags'] = tags
 
                 if department and category:
                     if subcategory:
@@ -598,14 +637,18 @@ def batch_enhance_products(
             category = tags[0] if tags else ''
             subcategory = tags[1] if len(tags) > 1 else ''
 
-            # Validate taxonomy against canonical values
-            is_valid, reason = validate_taxonomy(department, category, subcategory)
+            # Validate and normalize taxonomy against canonical values
+            is_valid, reason, department, category, subcategory = validate_taxonomy(department, category, subcategory)
             if not is_valid:
                 log_and_status(status_fn, f"  ⚠️ Taxonomy failure: {reason} — skipping product")
                 logging.warning(f"Taxonomy failure for '{title}': {reason}")
                 enhanced_product['_taxonomy_failure_reason'] = reason
                 taxonomy_failures.append(enhanced_product)
                 continue
+
+            # Apply normalized taxonomy values back to product
+            enhanced_product['product_type'] = department
+            enhanced_product['tags'] = [category] + ([subcategory] if subcategory else [])
 
             # HYBRID LAZY MAPPING: Generate Shopify category mapping on-the-fly with product context + semantic search
             if shopify_categories and embeddings_cache and taxonomy_mappings is not None and department and category:
