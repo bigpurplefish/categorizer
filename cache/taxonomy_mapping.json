@@ -1,0 +1,336 @@
+{
+  "version": "1.0",
+  "shopify_taxonomy_hash": "ada36e40598763cd32bfa36a769d02a32e3f2a5da127cd27b71f689b47ca5188",
+  "our_taxonomy_hash": "06405b2869c9cdab2de1f3f1ae7e13c7667d4a4c53a355b090c423080adea932",
+  "provider": "openai",
+  "model": "gpt-5",
+  "created_at": "2026-03-23T20:56:54.691201",
+  "category_count": 114,
+  "mapped_count": 54,
+  "mappings": {
+    "Landscape and Construction > Pavers and Hardscaping > Pavers": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5-1",
+      "confidence": "medium",
+      "reasoning": "“Turfstone” is commonly a permeable concrete grid paver used for driveways, parking, and erosion control—i.e., a structural masonry unit. This makes it a construction material, not a decorative stepping stone. The closest construction category provided is Bricks & Concrete Blocks under Masonry Consumables. Avoided Business & Industrial > Heavy Machinery > Pavers (that’s paving machines) and Home & Garden > Decor (decorative stones)."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Edging & Borders": {
+      "shopify_category": "Hardware > Fencing & Barriers > Garden Borders & Edging > Edging",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-3-5-2",
+      "confidence": "medium",
+      "reasoning": "The title 'Edgestone Plus' and internal categorization (Pavers and Hardscaping > Edging & Borders) indicate a landscape edging product used to border paver installations or garden beds. This is a functional hardscaping material, not a decorative stepping stone or a tool. Shopify’s Garden Borders & Edging > Edging best fits this use case."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Slabs": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5",
+      "confidence": "high",
+      "reasoning": "The title and your internal categorization indicate a hardscape paving slab (18\"x18\" ledgestone) used for patios/walkways. This is a construction material, not a decorative garden stone. Among the provided taxonomy options, Masonry Consumables is the correct functional bucket for pavers/slabs; decorative Garden/Stepping Stones and heavy machinery Pavers are inappropriate."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Wall Caps": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5",
+      "confidence": "medium",
+      "reasoning": "The product is a hardscape wall cap used as a masonry component on top of retaining walls, aligning with construction materials rather than decorative garden items. Among available categories, Masonry Consumables covers masonry units and related materials used in construction; there is no specific wall cap/coping category in the provided taxonomy subset."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Retaining Walls": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5-1",
+      "confidence": "high",
+      "reasoning": "‘Pyzique Split Face Wall’ refers to segmental retaining wall blocks (split-face concrete units) used to build retaining walls. This is a construction/masonry material, not decorative garden stone or edging, so the correct placement is under Masonry Consumables > Bricks & Concrete Blocks."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Accessories": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5-1",
+      "confidence": "medium",
+      "reasoning": "“Column Kit” in a hardscaping/pavers context typically refers to a set of concrete blocks/bricks used to construct a masonry column (functional construction material, not decor). Given the internal category is Pavers/Hardscaping Accessories and the likely components are concrete block units, the most accurate taxable category is Masonry Consumables > Bricks & Concrete Blocks rather than decorative garden items."
+    },
+    "Pet Supplies > Dogs > Food": {
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-3-3",
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Food",
+      "confidence": "high",
+      "reasoning": "Dog food products map directly to Shopify's Dog Food category (ap-2-3-3) under Dog Supplies. Non-prescription by default."
+    },
+    "Landscape and Construction > Aggregates > Stone": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Mulch > Inorganic Mulch",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-12-1",
+      "confidence": "medium",
+      "reasoning": "“Sherwood River Rock” aligns with landscape aggregate used as ground cover/drainage in gardening, not a structural building material and not a single decorative stone. Within the available taxonomy, bulk landscape rock best fits Inorganic Mulch rather than Decor > Garden Stones or Hardware > Masonry (cement/grout). Limited description prevents high confidence, but the internal category (Aggregates > Stone) supports a landscaping mulch classification."
+    },
+    "Landscape and Construction > Aggregates > Mulch": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Mulch > Organic Mulch",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-12-3",
+      "confidence": "medium",
+      "reasoning": "“Black Dyed Mulch” commonly refers to dyed wood mulch used for landscaping and gardening (organic material). This is not a construction/building material. If it were rubber or stone mulch (inorganic), the title would typically indicate that. Given the naming and typical market usage, the best fit is Organic Mulch."
+    },
+    "Landscape and Construction > Aggregates > Soil": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Soil",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-18-2",
+      "confidence": "high",
+      "reasoning": "Soil subcategory covers bulk soil products (topsoil, fill dirt, mushroom soil, compost) sold by the yard for landscaping and gardening. Sands & Soils > Soil is the correct Shopify category for these bulk soil amendments and fill materials."
+    },
+    "Landscape and Construction > Aggregates > Ice Melt": {
+      "shopify_category": "Hardware > Building Consumables > Chemicals > De-Icers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-1-5",
+      "confidence": "high",
+      "reasoning": "Ice melt and rock salt products are de-icing materials, not landscaping aggregates. Shopify provides a precise De-Icers category under Building Consumables > Chemicals."
+    },
+    "Landscape and Construction > Aggregates > Sand": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5",
+      "confidence": "high",
+      "reasoning": "Concrete Sand is a construction aggregate used for making concrete and bedding pavers, which classifies it as a masonry/building consumable rather than a decorative or gardening sand. This mapping aligns with construction material tax treatment."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Steps & Treads": {
+      "shopify_category": "Hardware > Building Materials",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-2",
+      "confidence": "medium",
+      "reasoning": "“Borealis Steps” aligns with landscape hardscaping steps/treads used as construction materials, not decorative garden stepping stones or pool steps. Given the taxonomy provided lacks a specific subcategory for landscape step/tread components, the safest accurate classification for tax purposes is under Building Materials rather than Decor or specialty step categories."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Joint Sand & Polymeric Sand": {
+      "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Grout",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-5-3",
+      "confidence": "medium",
+      "reasoning": "Polymeric jointing sand is a masonry consumable used to fill and stabilize joints between pavers—functionally analogous to grout (a joint filler), not gardening sand or decorative stone. This ensures proper building-material tax treatment."
+    },
+    "Landscape and Construction > Paving & Construction Supplies > Adhesives": {
+      "shopify_category": "Hardware > Building Consumables > Hardware Glue & Adhesives",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-2",
+      "confidence": "high",
+      "reasoning": "This is a polyurethane construction adhesive intended to bond landscape blocks/pavers. Functionally it is a building consumable adhesive, not a mortar/grout, cleaner, or decorative item. The most accurate taxonomy is the general construction adhesives category."
+    },
+    "Livestock and Farm > Horses > Health": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Equestrian > Horse Care > Horse Vitamins & Supplements",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-5-1-7",
+      "confidence": "high",
+      "reasoning": "Equi-dex Electrolyte is an equine (horse) electrolyte supplement used to replenish minerals and support hydration. This is a horse-specific nutritional supplement, not a medication or human sports drink, and fits best under Horse Vitamins & Supplements for correct equestrian tax treatment."
+    },
+    "Home and Gift > Home Decor > Seasonal Decorations": {
+      "shopify_category": "Home & Garden > Decor > Seasonal & Holiday Decorations",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-58",
+      "confidence": "high",
+      "reasoning": "The item is a decorative, lighted bow intended for Christmas. Its primary function is seasonal decor, not general lighting or party supplies, and it is not a specific sub-item like a tree topper, ornament, wreath, or garland. Therefore the general Seasonal & Holiday Decorations category is the most accurate and tax-appropriate."
+    },
+    "Lawn and Garden > Garden Decor > Chimes": {
+      "shopify_category": "Home & Garden > Decor > Wind Chimes",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-70",
+      "confidence": "medium",
+      "reasoning": "Title indicates a hanging decorative bell for garden use, aligning with wind-activated chimes. It is decorative (not door hardware or a musical instrument), and your internal categorization as 'Chimes' supports placement under Wind Chimes."
+    },
+    "Pet Supplies > Dogs > Collars": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Collars & Harnesses > Standard Collars",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-17-8",
+      "confidence": "high",
+      "reasoning": "The product is a functional dog collar made of nylon with no indication of GPS, LED, flea control, or training features. This matches a standard pet collar rather than specialized subtypes."
+    },
+    "Livestock and Farm > Horses > Accessories": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Equestrian > Horse Care > Horse Grooming",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-5-1-5",
+      "confidence": "medium",
+      "reasoning": "Title indicates an equine-specific sprayer used to apply fly spray/conditioners as part of horse care. This is an equestrian grooming tool, not a garden/paint sprayer or a pet chemical product. Placing it under Horse Grooming aligns with its function and equestrian tax treatment."
+    },
+    "Pet Supplies > Dogs > Crates": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Carriers & Crates",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-16",
+      "confidence": "high",
+      "reasoning": "The product is a functional dog crate (single-door wire crate) used for pet containment and transport. Within the provided taxonomy, crates belong under Pet Carriers & Crates. No more specific subtype (e.g., soft-sided or furniture-style) applies, so the parent 'Pet Carriers & Crates' category is the most accurate and tax-appropriate."
+    },
+    "Pet Supplies > Dogs > Toys": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Toys",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-3-7",
+      "confidence": "high",
+      "reasoning": "The title clearly indicates a dog chew toy (a play/chew item for dogs). It is not an edible treat or dental chew and not a bed or accessory. Therefore, it belongs under Dog Supplies > Dog Toys for correct tax treatment."
+    },
+    "Lawn and Garden > Garden Tools > Pruners": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Gardening Tools > Pruning Shears",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-7-9",
+      "confidence": "high",
+      "reasoning": "‘Dramm Stainless Steel Compact Shear’ is a handheld garden pruner (secateur) used for trimming plants. Dramm is a garden tool brand, and ‘compact shear’ in this context aligns with pruning shears, not kitchen, beauty, pet, or power tools."
+    },
+    "Pet Supplies > Dogs > Waste": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Training Aids > Pet Training Pads",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-41-3",
+      "confidence": "high",
+      "reasoning": "The product is absorbent floor pads specifically for dog and puppy potty training. These are not worn (so not diapers or liners) and are not waste bags or disposal tools. The exact functional match in Shopify’s taxonomy is Pet Training Aids > Pet Training Pads."
+    },
+    "Pet Supplies > Dogs > Treats": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-3-9",
+      "confidence": "high",
+      "reasoning": "The product is a freeze-dried beef liver treat intended for dogs (brand Stewart is known for dog treats and internal categorization confirms Dogs > Treats). It is not a meal (dog food) nor a dental chew; it is a consumable reward/snack, fitting precisely under Dog Treats for correct tax handling."
+    },
+    "Pet Supplies > Dogs > Accessories": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Leashes > Standard Leashes",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-31-5",
+      "confidence": "high",
+      "reasoning": "The title 'Coastal Pet Nylon Lead' indicates a typical pet (dog) leash made of nylon. 'Lead' is synonymous with leash, and no features suggest hands-free, training, slip, or double variants. It is not equestrian or baby-related. Therefore, the standard pet leash category is the most accurate and tax-appropriate."
+    },
+    "Pet Supplies > Dogs > Bedding": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Beds > Pillow Beds",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-9-11",
+      "confidence": "high",
+      "reasoning": "The product is a pet 'pillow bed' (bone print implies for dogs). This matches the functional category of pet beds, specifically the pillow style, not human bedding or decor."
+    },
+    "Livestock and Farm > General Farm Supplies > Buckets": {
+      "shopify_category": "Home & Garden > Household Supplies > Household Cleaning Supplies > Buckets",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-10-6-4",
+      "confidence": "high",
+      "reasoning": "The product is a durable plastic utility muck tub used for mucking/cleaning and hauling waste or materials, functionally a large utility bucket. It is not a livestock feeder or waterer, nor a decorative or food-service tub. Among available categories, the general-purpose cleaning Buckets category most accurately reflects its use and ensures correct tax treatment."
+    },
+    "Livestock and Farm > Chickens > Supplies (coops, feeders, waterers)": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feeders & Waterers > Livestock Feeders",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-3-1",
+      "confidence": "high",
+      "reasoning": "The product is a functional poultry (chicken) feeder set intended for farm/livestock use. It is not pet bird gear or a decorative wild bird feeder, and it is not animal feed. The correct functional category is livestock feeders under Animal Husbandry."
+    },
+    "Livestock and Farm > Chickens > Supplies": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feeders & Waterers > Livestock Feeders",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-3-1",
+      "confidence": "high",
+      "reasoning": "The item is a plastic feeder base from a farm/ag brand, intended for poultry (chickens) in a livestock context. It is a functional component of a livestock feeder, not a decorative wild bird feeder and not a household pet bowl. Shopify lacks a dedicated accessories subcategory here, so the correct functional placement is under Livestock Feeders within Animal Husbandry to reflect agricultural/farm use and appropriate tax treatment."
+    },
+    "Lawn and Garden > Garden Supplies > Planters": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Pots & Planters > Planters",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-16-1",
+      "confidence": "high",
+      "reasoning": "The product is a functional planting container (“planter with saucer”) used for growing plants. Despite including a saucer, its primary purpose is as a planter, not a standalone saucer or decorative item. This aligns precisely with the Planters category under Pots & Planters."
+    },
+    "Pet Supplies > Birds > Seeds": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Bird Supplies > Bird Food",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-1-3",
+      "confidence": "medium",
+      "reasoning": "This product is edible seed intended to feed birds. The taxonomy provided includes categories for feeders/accessories (Home & Garden > Decor) and hunting attractants, but no distinct category for wild bird food specifically. Functionally, it is bird food (not a feeder/accessory or hunting bait), so the most accurate available category is Bird Food under Bird Supplies."
+    },
+    "Pet Supplies > Small Pets > Accessories": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Reptile & Amphibian Supplies > Reptile & Amphibian Habitat Heating & Lighting",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-46-3",
+      "confidence": "high",
+      "reasoning": "This is a reptile basking spot lamp designed to provide heat/light for reptile habitats (terrariums), not a household light bulb. It fits the reptile habitat heating & lighting category."
+    },
+    "Pet Supplies > Birds > Treats": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Bird Supplies > Bird Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-1-7",
+      "confidence": "high",
+      "reasoning": "The product is a fruit-flavored treat stick specifically for pet birds. This is an edible, supplemental snack (not primary feed) and not an accessory or toy. The most precise taxonomy match is Bird Treats, ensuring correct tax treatment for pet consumables."
+    },
+    "Pet Supplies > Cats > Harnesses": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Collars & Harnesses > Harnesses",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-17-4",
+      "confidence": "high",
+      "reasoning": "The product is a functional cat harness (with included leash), used to secure and walk a cat. Within Shopify’s pet taxonomy, harnesses fall under Pet Collars & Harnesses > Harnesses. There is no cat-specific harness subcategory provided, and baby/toddler safety harnesses are not applicable. Selecting Harnesses ensures correct tax treatment for pet restraint gear."
+    },
+    "Home and Gift > Gifts > Themed Gifts": {
+      "shopify_category": "Apparel & Accessories > Clothing > Clothing Tops > Sweaters",
+      "shopify_id": "gid://shopify/TaxonomyCategory/aa-1-13-12",
+      "confidence": "high",
+      "reasoning": "The item is a wearable adult sweater (Eddie Bauer Fair Isle sweater). Its primary function is apparel, not decor or gifts. The most specific applicable category is Clothing Tops > Sweaters, which aligns with its use and ensures correct apparel tax treatment."
+    },
+    "Home and Gift > Home Decor > Candles": {
+      "shopify_category": "Home & Garden > Decor > Home Fragrances > Wax Tarts",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-40-6",
+      "confidence": "high",
+      "reasoning": "The title 'A Cheerful Giver Melts Box' indicates wax melts (fragrance wax pieces used in warmers). This is a finished home fragrance product, not a candle, tool, or raw material. In Shopify taxonomy, wax melts correspond to Home Fragrances > Wax Tarts."
+    },
+    "Livestock and Farm > Horses > Tack & Equipment": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Equestrian > Horse Tack > Horse Leads",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-5-2-6",
+      "confidence": "high",
+      "reasoning": "This is an equestrian lead rope with a brass snap designed to attach to a horse’s halter for handling/leading. It is horse tack, not general hardware rope or a pet leash."
+    },
+    "Lawn and Garden > Garden Supplies": {
+      "shopify_category": "Home & Garden > Household Supplies > Pest Control > Pesticides > Garden Insecticides",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-10-11-3-2",
+      "confidence": "high",
+      "reasoning": "Mosquito Dunks are a biological larvicide (Bti) that kills mosquito larvae in standing water. This is an insect-killing pesticide used in outdoor/garden contexts (ponds, birdbaths), not a repellent, trap, or pond accessory. Therefore the correct functional category is Garden Insecticides under Pest Control."
+    },
+    "Landscape and Construction > Paving & Construction Supplies > Sealers": {
+      "shopify_category": "Hardware > Building Consumables > Painting Consumables > Paint",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-6-1",
+      "confidence": "high",
+      "reasoning": "This is an aerosol protective enamel spray paint used to coat and protect surfaces (e.g., metal, wood) in construction/DIY contexts. It functions as building paint, not an art/craft paint, sealant, or vehicle-specific paint. Classifying under Hardware > Building Consumables > Painting Consumables > Paint aligns with its functional use and tax treatment for construction materials."
+    },
+    "Livestock and Farm > General Farm Supplies > Fencing": {
+      "shopify_category": "Hardware > Hardware Accessories > Hooks, Buckles & Fasteners > Chain Connectors & Links",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-6-16-1",
+      "confidence": "medium",
+      "reasoning": "Campbell is known for chain and rigging hardware. A 'welded ring' is a solid metal ring used as a connector/link with chain, rope, or straps, not a fence panel or gate component. The functional use aligns with chain connectors/links rather than fencing accessories, ensuring correct tax treatment as hardware accessories."
+    },
+    "Livestock and Farm > General Farm Supplies > Tools": {
+      "shopify_category": "Hardware > Hardware Accessories > Hooks, Buckles & Fasteners > Chain Connectors & Links",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-6-16-1",
+      "confidence": "medium",
+      "reasoning": "A 'quick snap' is a small snap hook/clip used to quickly attach rope or chain—functionally a connector. This is general hardware, not apparel, sporting, or lifting gear. Among the provided options, Chain Connectors & Links best matches its function as a hardware connector."
+    },
+    "Landscape and Construction > Paving & Construction Supplies": {
+      "shopify_category": "Hardware > Hardware Accessories > Hooks, Buckles & Fasteners > Lifting Hooks, Clamps & Shackles",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-6-16-3",
+      "confidence": "high",
+      "reasoning": "A wire rope clip (cable clamp) is rigging hardware used to clamp and terminate wire rope. It is not an electrical cable clip or a decorative item; it functions as a lifting/rigging fastener. Among the provided taxonomy, the rigging-focused category for lifting hooks, clamps, and shackles best matches the product’s purpose and tax treatment."
+    },
+    "Lawn and Garden > Garden Tools": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Plant Cages & Supports > Plant Supports > Plant Stakes",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-13-2-4",
+      "confidence": "high",
+      "reasoning": "The item is a steel plant stake intended to support plants. This is a functional gardening support, not a general tool or decorative item, aligning precisely with Plant Supports > Plant Stakes."
+    },
+    "Lawn and Garden > Garden Supplies > Watering Systems": {
+      "shopify_category": "Hardware > Plumbing > Plumbing Fittings & Supports",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-10-1",
+      "confidence": "medium",
+      "reasoning": "A hose clamp is a plumbing fastener used to secure flexible hose to a barb/fitting. The title does not indicate a garden-hose-specific accessory; it’s general plumbing hardware. Categorizing under Hardware > Plumbing > Plumbing Fittings & Supports reflects its functional use and avoids misclassifying it as a garden watering accessory. Chose the broader fittings/supports category rather than 'pipe clamps' to avoid the pipe-vs-hose mismatch."
+    },
+    "Pet Supplies > Small Pets > Food": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Fish & Aquatic Supplies > Fish Food > Dry Fish Food",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-4-16-4",
+      "confidence": "high",
+      "reasoning": "This is a formulated koi pond feed in soft stick form, which is a dry, shelf-stable fish food. It fits the Fish & Aquatic Supplies > Fish Food > Dry Fish Food category. It is not for small mammals, nor is it frozen/live/medicated or species listed like goldfish/cichlid/betta."
+    },
+    "Pet Supplies > Dogs > Grooming": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Oral Care Supplies > Toothpaste",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-36-9",
+      "confidence": "high",
+      "reasoning": "The product is an enzymatic toothpaste formulated for dogs. Within pet categories, oral care supplies have a specific toothpaste subcategory. It is not a chew, gel, spray, or supplement, and it is not human toothpaste. Selecting the pet toothpaste category ensures correct tax treatment for a pet oral care product."
+    },
+    "Livestock and Farm > General Farm Supplies": {
+      "shopify_category": "Home & Garden > Household Supplies > Pest Control",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-10-11",
+      "confidence": "medium",
+      "reasoning": "Motomco Rodent Station is a bait station used for rodent control. It is not a pesticide (chemical) nor a trap type (snap, glue, live, etc.). Given the provided options, the most accurate and tax-safe fit is the general Pest Control category rather than misclassifying it as a trap or pesticide."
+    },
+    "Lawn and Garden > Garden Supplies > Fertilizers": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Fertilizers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-3",
+      "confidence": "high",
+      "reasoning": "Espoma Organic Tomato-Tone is a granular plant fertilizer formulated for tomatoes and vegetables. It is not compost, soil, hydroponic nutrient solution, pesticide, or aquatic plant product. The correct functional category is gardening fertilizers."
+    },
+    "Lawn and Garden > Garden Supplies > Soil Conditioners": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Sands & Soils > Soil",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-18-2",
+      "confidence": "high",
+      "reasoning": "Espoma Organic Potting Soil Mix is a growing medium intended for container and garden planting. Its primary function is soil, not fertilizer, compost, mulch, or hydroponic media. Therefore the specific Soil category under Sands & Soils is the most accurate for function and tax treatment."
+    },
+    "Lawn and Garden > Garden Tools > Gloves": {
+      "shopify_category": "Business & Industrial > Work Safety Protective Gear > Safety Gloves",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-25-8",
+      "confidence": "medium",
+      "reasoning": "Wells Lamont makes utility/work gloves, and the title’s materials (Coolmax polyester/spandex/nylon) and likely 'coated' style indicate a protective work/gardening glove. It is not fashion, medical, kitchen, or sport-specific. Shopify lacks a dedicated 'gardening gloves' node, so the correct functional fit is general Safety Gloves under Work Safety Protective Gear."
+    },
+    "Pet Supplies > Cats > Food": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Food > Non-Prescription Cat Food",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-2-1-1",
+      "confidence": "high",
+      "reasoning": "The title clearly indicates it is dry cat food (chicken & fish recipe) with no prescription/therapeutic claim, so it fits Non-Prescription Cat Food."
+    },
+    "Pet Supplies > Cats > Waste": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Litter",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-2-4",
+      "confidence": "high",
+      "reasoning": "This is a cat litter product (non-clumping, paper pellet, unscented) intended for feline waste management. It is not a litter box, liner, mat, or a household cleaner/odor remover. The correct functional category is Cat Litter under Cat Supplies to ensure proper pet-supplies tax handling."
+    },
+    "Pet Supplies > Dogs > Training Tools": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Hunting & Shooting > Hunting > Hunting Dog Equipment > Hunting Dog Training Dummies",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-4-3",
+      "confidence": "high",
+      "reasoning": "The item is a canvas dog training dummy (Water & Woods/Coastal brand), which is specifically used to train retrievers for hunting and field work. Shopify provides a dedicated category for this exact function under Hunting Dog Equipment > Hunting Dog Training Dummies, which is more accurate than generic pet training aids or toys and ensures correct tax treatment."
+    }
+  }
+}

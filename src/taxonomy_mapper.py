@@ -16,6 +16,7 @@ import json
 import logging
 import hashlib
 import os
+import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
@@ -24,6 +25,31 @@ from .config import log_and_status
 
 # Cache file for taxonomy mappings
 MAPPING_CACHE_FILE = "cache/taxonomy_mapping.json"
+
+# Regex for valid Shopify taxonomy GIDs: gid://shopify/TaxonomyCategory/<id>
+# where <id> is a non-empty string of alphanumeric chars and hyphens (e.g., "ap-2-3-7")
+_VALID_SHOPIFY_GID_RE = re.compile(r'^gid://shopify/TaxonomyCategory/[a-zA-Z0-9][-a-zA-Z0-9]*$')
+
+
+def is_valid_shopify_gid(gid: object) -> bool:
+    """
+    Validate that a Shopify taxonomy GID has the correct format.
+
+    Valid format: gid://shopify/TaxonomyCategory/<id>
+    where <id> is like 'ap', 'ap-2', 'ap-2-3-7', 'ha-1-5-1', etc.
+
+    Rejects placeholders like 'gid://shopify/123', None, empty strings,
+    and GIDs for other Shopify resource types.
+
+    Args:
+        gid: Value to validate
+
+    Returns:
+        True if gid is a valid Shopify TaxonomyCategory GID
+    """
+    if not isinstance(gid, str) or not gid:
+        return False
+    return bool(_VALID_SHOPIFY_GID_RE.match(gid))
 
 
 def compute_file_hash(file_path: str) -> str:
@@ -1412,33 +1438,42 @@ def lookup_shopify_category(
         full_path = f"{department} > {category} > {subcategory}"
         if full_path in mappings:
             mapping = mappings[full_path]
-            if mapping.get('shopify_id'):
+            shopify_id = mapping.get('shopify_id')
+            if shopify_id and is_valid_shopify_gid(shopify_id):
                 logging.debug(f"Found mapping for full path: {full_path} -> {mapping['shopify_category']}")
                 return {
-                    'shopify_id': mapping['shopify_id'],
+                    'shopify_id': shopify_id,
                     'shopify_category': mapping.get('shopify_category', 'Unknown')
                 }
+            elif shopify_id and not is_valid_shopify_gid(shopify_id):
+                logging.warning(f"Invalid Shopify GID for '{full_path}': {shopify_id} — skipping to fallback")
 
     # Try department > category
     cat_path = f"{department} > {category}"
     if cat_path in mappings:
         mapping = mappings[cat_path]
-        if mapping.get('shopify_id'):
+        shopify_id = mapping.get('shopify_id')
+        if shopify_id and is_valid_shopify_gid(shopify_id):
             logging.debug(f"Found mapping for category path: {cat_path} -> {mapping['shopify_category']}")
             return {
-                'shopify_id': mapping['shopify_id'],
+                'shopify_id': shopify_id,
                 'shopify_category': mapping.get('shopify_category', 'Unknown')
             }
+        elif shopify_id and not is_valid_shopify_gid(shopify_id):
+            logging.warning(f"Invalid Shopify GID for '{cat_path}': {shopify_id} — skipping to fallback")
 
     # Try just department (fallback)
     if department in mappings:
         mapping = mappings[department]
-        if mapping.get('shopify_id'):
+        shopify_id = mapping.get('shopify_id')
+        if shopify_id and is_valid_shopify_gid(shopify_id):
             logging.debug(f"Found mapping for department: {department} -> {mapping['shopify_category']}")
             return {
-                'shopify_id': mapping['shopify_id'],
+                'shopify_id': shopify_id,
                 'shopify_category': mapping.get('shopify_category', 'Unknown')
             }
+        elif shopify_id and not is_valid_shopify_gid(shopify_id):
+            logging.warning(f"Invalid Shopify GID for '{department}': {shopify_id}")
 
     logging.warning(f"No Shopify category mapping found for: {department} > {category} > {subcategory}")
     return None

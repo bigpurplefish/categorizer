@@ -452,7 +452,7 @@ class TestBatchEnhanceProducts:
                     "category": "Dogs",
                     "subcategory": "Food",
                     "enhanced_description": "<p>Enhanced</p>",
-                    "shopify_category_id": "gid://shopify/123"
+                    "shopify_category_id": "gid://shopify/TaxonomyCategory/ap-2-3-3"
                 }
             }
         }
@@ -465,7 +465,7 @@ class TestBatchEnhanceProducts:
         assert enhanced[0]["product_type"] == "Pet Supplies"
         assert enhanced[0]["tags"] == ["Dogs", "Food"]
         assert enhanced[0]["descriptionHtml"] == "<p>Enhanced</p>"
-        assert enhanced[0]["shopify_category_id"] == "gid://shopify/123"
+        assert enhanced[0]["shopify_category_id"] == "gid://shopify/TaxonomyCategory/ap-2-3-3"
 
     @patch('src.ai_provider.load_markdown_file')
     @patch('src.ai_provider.save_cache')
@@ -491,12 +491,12 @@ class TestBatchEnhanceProducts:
             "product_type": "Pet Supplies",
             "tags": ["Dogs", "Food"],
             "descriptionHtml": "<p>Enhanced</p>",
-            "shopify_category_id": "gid://shopify/123",
+            "shopify_category_id": "gid://shopify/TaxonomyCategory/ap-2-3-3",
             "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies"
         }
         # Mock the taxonomy mapping generation to avoid real API calls
         mock_generate_mapping.return_value = {
-            "shopify_id": "gid://shopify/123",
+            "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-3-3",
             "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies"
         }
 
@@ -509,7 +509,7 @@ class TestBatchEnhanceProducts:
         assert cached_product["category"] == "Dogs"
         assert cached_product["subcategory"] == "Food"
         assert cached_product["enhanced_description"] == "<p>Enhanced</p>"
-        assert cached_product["shopify_category_id"] == "gid://shopify/123"
+        assert cached_product["shopify_category_id"] == "gid://shopify/TaxonomyCategory/ap-2-3-3"
 
     @patch('src.ai_provider.load_markdown_file')
     @patch('src.ai_provider.save_cache')
