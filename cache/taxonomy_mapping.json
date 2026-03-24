@@ -4,9 +4,9 @@
   "our_taxonomy_hash": "06405b2869c9cdab2de1f3f1ae7e13c7667d4a4c53a355b090c423080adea932",
   "provider": "openai",
   "model": "gpt-5",
-  "created_at": "2026-03-23T22:03:33.230382",
+  "created_at": "2026-03-24T05:40:45.368562",
   "category_count": 114,
-  "mapped_count": 59,
+  "mapped_count": 77,
   "mappings": {
     "Landscape and Construction > Pavers and Hardscaping > Pavers": {
       "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
@@ -361,6 +361,114 @@
       "shopify_id": "gid://shopify/TaxonomyCategory/hg-13-10",
       "confidence": "medium",
       "reasoning": "The title 'Propeller LED Decor' indicates a decorative LED piece intended to provide ambient/accent lighting rather than a functional task lamp or a toy. Given the emphasis on 'Decor' and LED illumination, the most accurate fit is Night Lights & Ambient Lighting. It is not a building material, not a light bulb, and there’s no evidence it’s a toy or party special-effects light. This category aligns with decorative, novelty LED items used for ambiance in home settings, which is important for correct tax treatment."
+    },
+    "Lawn and Garden > Garden Decor > Flags": {
+      "shopify_category": "Home & Garden > Decor > Mailbox Accessories > Mailbox Covers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-45-1",
+      "confidence": "high",
+      "reasoning": "The product is a decorative mailbox cover (a wrap for an existing mailbox), which fits the specific Shopify category for Mailbox Covers under Mailbox Accessories. Despite the internal categorization suggesting flags, this is not a flag; its function is decorative covering for a mailbox, aligning precisely with Mailbox Covers."
+    },
+    "Hunting and Fishing > Deer > Gear": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Camping & Hiking > Camping Tools > Hunting & Survival Knives > Locking Blade Knives",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-2-4-7-1",
+      "confidence": "high",
+      "reasoning": "This is a folding pocket knife with SOG’s AT-XR lock, making it a locking blade knife intended for EDC/outdoor/hunting use. It is not a utility/box cutter, kitchen knife, collectible, or a dedicated combat weapon. The Hunting & Survival Knives > Locking Blade Knives category most accurately reflects its functional purpose and tax treatment."
+    },
+    "Livestock and Farm > Sheep > Health": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Health & Veterinary Supplies > Vaccines & Medications",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-6-1",
+      "confidence": "high",
+      "reasoning": "Ivermectin Sheep Drench is a livestock antiparasitic medication administered to sheep. This is a veterinary medication for farm animals, not a pet product or general pesticide, so it fits under Animal Husbandry > Health & Veterinary Supplies > Vaccines & Medications."
+    },
+    "Hunting and Fishing > Deer > Food Plots": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Herbicides",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-9",
+      "confidence": "high",
+      "reasoning": "The product is explicitly an herbicide (weed killer). Regardless of its hunting/food plot use case, its functional purpose is vegetation control, which maps directly to the Herbicides category under Lawn & Garden. It is not a wildlife attractant, feed, or general pesticide subtype like insecticide or fungicide."
+    },
+    "Livestock and Farm > Chickens > Feed": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feed > Chicken Feed",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-2-2",
+      "confidence": "high",
+      "reasoning": "Title indicates a medicated starter/grow crumble feed for chickens (Purina Start N Grow w/AMP). This is livestock chicken feed, not pet bird food. The correct functional category is Livestock Feed > Chicken Feed for accurate tax treatment."
+    },
+    "Pet Supplies > Cats > Grooming": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Grooming Supplies > Pet Shampoo & Conditioner > 2-in-1 Shampoo & Conditioners",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-26-7-1",
+      "confidence": "high",
+      "reasoning": "The product is a cat grooming item that explicitly combines shampoo and conditioner (2-in-1). In Shopify’s taxonomy, pet grooming products fall under Pet Grooming Supplies, and the most specific, functionally accurate node for a combined shampoo+conditioner is '2-in-1 Shampoo & Conditioners'. This avoids human haircare categories and non-shampoo pet items, aligning with proper tax treatment for pet grooming supplies."
+    },
+    "Pet Supplies > Cats > Treats": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-2-6",
+      "confidence": "high",
+      "reasoning": "The product is a lickable, squeezable creamy purée specifically marketed as a cat treat/topper. It is not a full cat food, medicine, or supplement. Therefore, the correct functional category is Cat Treats."
+    },
+    "Livestock and Farm > Horses > Feed": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Equestrian > Horse Care > Horse Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-5-1-6",
+      "confidence": "high",
+      "reasoning": "The product name explicitly indicates an edible treat for horses (“Horse Muffins”). These are not staple horse feed or nutritional supplements but discretionary treats given to horses. Therefore, the correct functional category is Horse Treats under Equestrian > Horse Care, not human bakery muffins or general livestock feed."
+    },
+    "Pet Supplies > Dogs > Cleaning": {
+      "shopify_category": "Home & Garden > Household Supplies > Household Cleaning Supplies > Household Cleaning Products > Pet Odor & Stain Removers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-10-6-11-12",
+      "confidence": "high",
+      "reasoning": "The title indicates a cleaner specifically formulated to remove pet urine odors/stains from household surfaces. This is a household cleaning product, not a grooming item or training aid, so the dedicated Pet Odor & Stain Removers category is the most accurate and tax-appropriate."
+    },
+    "Pet Supplies > Dogs > Harnesses": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Collars & Harnesses > Harnesses",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-17-4",
+      "confidence": "high",
+      "reasoning": "Title explicitly indicates a functional dog harness (PetSafe Easy Walk Adjustable Dog Harness). This is pet-walking equipment, not apparel or a leash, and Shopify provides a dedicated Harnesses category under Pet Collars & Harnesses. No dog-specific harness subcategory exists, so this is the most precise functional match, ensuring correct tax treatment."
+    },
+    "Livestock and Farm > Chickens > Accessories": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1",
+      "confidence": "medium",
+      "reasoning": "EZ Leg Bands are poultry/chicken identification/management bands used in farming. Functionally they are livestock husbandry accessories, not pet ID tags, office supplies, or decor. Within the provided taxonomy, the closest and tax-appropriate fit is Agriculture > Animal Husbandry."
+    },
+    "Landscape and Construction > Paving Tools & Equipment": {
+      "shopify_category": "Hardware > Tool Accessories > Tool Blades > Saw Blades",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-14-23-2",
+      "confidence": "high",
+      "reasoning": "A diamond blade is a saw blade accessory used for cutting masonry/pavers/concrete. The product is clearly a functional tool accessory (not decorative). The title doesn’t specify the exact saw type (circular, grinder, cut-off), so the correct and safest tax-relevant placement is the general Saw Blades category rather than a narrower subtype."
+    },
+    "Hunting and Fishing > Deer > Minerals & Supplements": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Hunting & Shooting > Hunting > Wildlife Attractants > Wildlife Bait, Feed & Minerals > Wildlife Minerals",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-7-4-3",
+      "confidence": "high",
+      "reasoning": "This is a deer mineral lick used as a wildlife attractant/supplement for hunting, fitting the Wildlife Minerals category rather than pet, human supplements, or decorative rocks."
+    },
+    "Hunting and Fishing > Deer > Scent Control": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Hunting & Shooting > Hunting > Wildlife Attractants > Cover Scents & Scent Attractants",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-7-1",
+      "confidence": "high",
+      "reasoning": "This product is a hunting cover scent wafer used to mask human odor for deer hunting. Its function is a wildlife attractant/cover scent, not a home fragrance or pet product. The dedicated hunting subcategory for cover scents and attractants precisely matches its intended use and tax treatment."
+    },
+    "Hunting and Fishing > Deer > Attractants": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Hunting & Shooting > Hunting > Wildlife Attractants > Cover Scents & Scent Attractants",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-7-1",
+      "confidence": "high",
+      "reasoning": "This is a hunting deer attractant scent (synthetic doe urine) delivered as a fogger. Its function is to attract wildlife via scent, not to generate theatrical fog or control pests. Therefore it fits under Hunting > Wildlife Attractants > Cover Scents & Scent Attractants."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Sealers & Cleaners": {
+      "shopify_category": "Hardware > Building Consumables > Chemicals > Concrete & Masonry Cleaners",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-1-1-4",
+      "confidence": "high",
+      "reasoning": "The product is a cleaner specifically formulated for driveways, concrete, and masonry surfaces. This is a building/maintenance chemical, not a general household cleaner or decorative item. The dedicated Concrete & Masonry Cleaners category precisely matches its function and typical use context."
+    },
+    "Lawn and Garden > Garden Decor": {
+      "shopify_category": "Home & Garden > Decor > Bird Baths",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-11",
+      "confidence": "high",
+      "reasoning": "The product is a standalone outdoor bird bath for wild birds. Shopify provides a specific Bird Baths category under Home & Garden > Decor. The heating feature does not change its fundamental function as a bird bath, and it is not a pet cage accessory or a fountain/pond product."
+    },
+    "Home and Gift > Home Decor": {
+      "shopify_category": "Home & Garden > Linens & Bedding > Bedding > Blankets > Throw Blankets",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-15-1-4-2",
+      "confidence": "medium",
+      "reasoning": "Title indicates a knitted blanket intended for general home use; no mentions of baby/receiving/swaddle or outdoor use. Despite the smaller 30x40 size, the functional intent aligns with a household throw/lap blanket rather than a purely decorative drape or a baby-specific blanket."
     }
   }
 }

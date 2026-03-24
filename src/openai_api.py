@@ -59,7 +59,8 @@ from .product_utils import (
     is_non_shipped_category,
     remove_weight_data_from_variants,
     convert_weight_to_grams,
-    html_to_shopify_rich_text
+    html_to_shopify_rich_text,
+    normalize_title_case
 )
 
 
@@ -791,6 +792,11 @@ def enhance_product_with_openai(
 
         # Create enhanced product with new taxonomy, description, weight, and purchase options
         enhanced_product = product.copy()
+
+        # Normalize ALL-CAPS POS titles to title case
+        if 'title' in enhanced_product:
+            enhanced_product['title'] = normalize_title_case(enhanced_product['title'])
+
         enhanced_product['product_type'] = department
 
         # Preserve collector-supplied metafields before reordering
@@ -1869,6 +1875,11 @@ def enhance_products_with_openai_batch(
 
             # Create enhanced product with taxonomy
             enhanced_product = product.copy()
+
+            # Normalize ALL-CAPS POS titles to title case
+            if 'title' in enhanced_product:
+                enhanced_product['title'] = normalize_title_case(enhanced_product['title'])
+
             enhanced_product['product_type'] = department
 
             tags = [category]

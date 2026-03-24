@@ -209,3 +209,101 @@ def remove_weight_data_from_variants(product: Dict) -> Dict:
                 logging.debug(f"Removed weight_data from variant {variant.get('sku', 'unknown')}")
 
     return product
+
+
+# Common short words that should be lowercase in title case (articles, prepositions, conjunctions)
+_TITLE_CASE_LOWERCASE = {
+    'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'yet', 'so',
+    'in', 'on', 'at', 'to', 'by', 'of', 'up', 'as', 'is', 'it',
+    'if', 'no', 'not', 'with', 'from', 'into', 'per', 'via',
+}
+
+# Words that should stay ALL-CAPS: units and known brand acronyms.
+# Only words in this set will be forced uppercase; everything else gets title-cased.
+_FORCE_UPPERCASE = {
+    # Measurement units
+    'LB', 'LBS', 'OZ', 'ML', 'KG', 'GM', 'FT', 'IN', 'YD', 'QT',
+    'PT', 'GAL', 'MM', 'CM', 'CC', 'HP', 'PSI', 'RPM', 'LED', 'UV',
+    'HD', 'XL', 'XXL', 'ID', 'OD',
+    # Known brand acronyms
+    'SOG', 'OX', 'PVC', 'USA', 'AKC', 'K9', 'GPS', 'LCD',
+}
+
+
+def normalize_title_case(title: str) -> str:
+    """
+    Normalize ALL-CAPS titles to title case.
+
+    Detects if a title is ALL-CAPS (>=80% uppercase letters) and converts
+    to title case. Fixes common .title() artifacts and preserves known
+    acronyms and measurement units. Also fixes double-escaped quotes.
+
+    Args:
+        title: Product title string, or None.
+
+    Returns:
+        Normalized title string, or None if input was None.
+    """
+    if title is None:
+        return None
+    if not title:
+        return title
+
+    # Fix double-escaped quotes regardless of casing
+    title = title.replace('""', '"')
+
+    # Count uppercase vs lowercase letters to determine if ALL-CAPS
+    upper_count = sum(1 for c in title if c.isupper())
+    lower_count = sum(1 for c in title if c.islower())
+    total_letters = upper_count + lower_count
+
+    if total_letters == 0:
+        return title
+
+    # Only convert if >=80% of letters are uppercase
+    if upper_count / total_letters < 0.80:
+        return title
+
+    # Apply .title() then fix artifacts
+    result = title.title()
+
+    # Fix apostrophe artifacts: 'S, 'T, 'Re, 'Ll, 'Ve, 'D, 'M
+    result = re.sub(r"'S\b", "'s", result)
+    result = re.sub(r"'T\b", "'t", result)
+    result = re.sub(r"'Re\b", "'re", result)
+    result = re.sub(r"'Ll\b", "'ll", result)
+    result = re.sub(r"'Ve\b", "'ve", result)
+    result = re.sub(r"'D\b", "'d", result)
+    result = re.sub(r"'M\b", "'m", result)
+
+    # Process each word for forced-uppercase tokens and lowercase articles
+    words = result.split(' ')
+    processed = []
+    for i, word in enumerate(words):
+        # Strip punctuation to get the core alphabetic word
+        core = re.sub(r'[^A-Za-z]', '', word)
+        core_upper = core.upper()
+
+        if not core:
+            # Non-alphabetic token (numbers, punctuation)
+            processed.append(word)
+            continue
+
+        # Check if the word should be forced uppercase (units, brand acronyms)
+        if core_upper in _FORCE_UPPERCASE:
+            processed.append(_restore_upper(word))
+            continue
+
+        # Common short words should be lowercase (except first/last word)
+        if core.lower() in _TITLE_CASE_LOWERCASE and i != 0 and i != len(words) - 1:
+            processed.append(word.lower())
+            continue
+
+        processed.append(word)
+
+    return ' '.join(processed)
+
+
+def _restore_upper(word: str) -> str:
+    """Restore all alphabetic characters in a word to uppercase."""
+    return ''.join(c.upper() if c.isalpha() else c for c in word)
