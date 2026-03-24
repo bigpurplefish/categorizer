@@ -33,6 +33,7 @@ try:
     )
     from src.ai_provider import batch_enhance_products
     from src.taxonomy_mapper import load_mapping_cache
+    from src.product_utils import normalize_title_case
 except ImportError as e:
     print(f"Error importing src: {e}")
     print("Make sure the src package is in the same directory as this script.")
@@ -595,11 +596,14 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
                 with open(output_file, 'r', encoding='utf-8') as f:
                     existing_data = json.load(f)
                     if isinstance(existing_data, list):
-                        # Index by title for fast lookup
+                        # Index by normalized title for fast lookup
+                        # (output titles may be normalized to title-case while
+                        # input titles may still be ALL-CAPS)
                         for product in existing_data:
                             title = product.get("title", "")
                             if title:
-                                existing_products[title] = product
+                                key = normalize_title_case(title) or title
+                                existing_products[key] = product
                         log_and_status(status, f"Found {len(existing_products)} existing products in output file")
                         log_and_status(status, "")
             except Exception as e:
@@ -613,10 +617,11 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
         for i, product in enumerate(products_to_process):
             actual_record_num = start_idx + i + 1
             title = product.get("title", "")
+            title_key = normalize_title_case(title) or title
 
             # Check if already processed (skip mode)
-            if processing_mode == "skip" and title in existing_products:
-                existing = existing_products[title]
+            if processing_mode == "skip" and title_key in existing_products:
+                existing = existing_products[title_key]
                 # Check if product has been enhanced (has taxonomy)
                 if existing.get("product_type"):
                     log_and_status(status, f"⏭ Skipping record #{actual_record_num}: {title} (already processed)")
@@ -783,7 +788,8 @@ def process_products_worker(cfg, status_queue, button_control_queue, app):
             for product in enhanced_products:
                 title = product.get("title", "")
                 if title:
-                    existing_products[title] = product
+                    key = normalize_title_case(title) or title
+                    existing_products[key] = product
 
             # Convert back to list
             all_enhanced = list(existing_products.values())
