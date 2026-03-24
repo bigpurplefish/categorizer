@@ -4,9 +4,9 @@
   "our_taxonomy_hash": "06405b2869c9cdab2de1f3f1ae7e13c7667d4a4c53a355b090c423080adea932",
   "provider": "openai",
   "model": "gpt-5",
-  "created_at": "2026-03-23T20:56:54.691201",
+  "created_at": "2026-03-23T22:03:33.230382",
   "category_count": 114,
-  "mapped_count": 54,
+  "mapped_count": 59,
   "mappings": {
     "Landscape and Construction > Pavers and Hardscaping > Pavers": {
       "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
@@ -331,6 +331,36 @@
       "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-4-3",
       "confidence": "high",
       "reasoning": "The item is a canvas dog training dummy (Water & Woods/Coastal brand), which is specifically used to train retrievers for hunting and field work. Shopify provides a dedicated category for this exact function under Hunting Dog Equipment > Hunting Dog Training Dummies, which is more accurate than generic pet training aids or toys and ensures correct tax treatment."
+    },
+    "Landscape and Construction > Paving Tools & Equipment > Hand Tools": {
+      "shopify_category": "Hardware > Tools > Wrenches",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-15-80",
+      "confidence": "high",
+      "reasoning": "A combination ratcheting wrench is a manual hand tool used to tighten/loosen nuts and bolts. It is not adjustable, a socket wrench, or a torque wrench, so the general Wrenches category is the most accurate functional fit. This aligns with its use as a construction/landscape hand tool, not a decorative item."
+    },
+    "Pet Supplies > Birds > Accessories": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Reptile & Amphibian Supplies > Reptile & Amphibian Habitat Heating & Lighting",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-46-3",
+      "confidence": "high",
+      "reasoning": "This is a specialized red nightlight bulb for reptile habitats (Zoo Med is a reptile brand). Its function is habitat heating/lighting for reptiles, not a general home light bulb or a bird accessory. Selecting the reptile habitat heating & lighting category ensures correct tax treatment for pet habitat equipment."
+    },
+    "Pet Supplies > Small Pets > Bedding": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Reptile & Amphibian Supplies > Reptile & Amphibian Substrates",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-46-5",
+      "confidence": "high",
+      "reasoning": "The title specifies 'Snake Bedding', which is a reptile habitat substrate. Zoo Med is a reptile supplies brand, and this product is used to line reptile enclosures, not as small animal bedding or a pet bed. Therefore the correct functional category is Reptile & Amphibian Substrates."
+    },
+    "Pet Supplies > Dogs > Chews": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Dog Supplies > Dog Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-3-9",
+      "confidence": "high",
+      "reasoning": "An elk antler dog chew is a consumable chew intended to be gnawed and ingested over time. This makes it a dog treat (food/chew) rather than a toy or an oral care product. The title specifies 'Dog Chew,' not 'dental' or 'toy,' aligning with Dog Treats for correct tax treatment."
+    },
+    "Home and Gift > Gifts > Novelty Items": {
+      "shopify_category": "Home & Garden > Lighting > Night Lights & Ambient Lighting",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-13-10",
+      "confidence": "medium",
+      "reasoning": "The title 'Propeller LED Decor' indicates a decorative LED piece intended to provide ambient/accent lighting rather than a functional task lamp or a toy. Given the emphasis on 'Decor' and LED illumination, the most accurate fit is Night Lights & Ambient Lighting. It is not a building material, not a light bulb, and there’s no evidence it’s a toy or party special-effects light. This category aligns with decorative, novelty LED items used for ambiance in home settings, which is important for correct tax treatment."
     }
   }
 }
