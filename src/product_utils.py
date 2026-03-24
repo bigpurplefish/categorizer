@@ -25,6 +25,32 @@ PURCHASE_OPTION_LABELS = {
 }
 
 
+def convert_weight_to_grams(weight: float, weight_unit: str = None) -> int:
+    """
+    Convert a weight value to grams based on its unit.
+
+    Args:
+        weight: The numeric weight value
+        weight_unit: Unit of measurement ('lb', 'lbs', 'kg', 'kgs', 'oz', 'g').
+                     Defaults to 'lb' if None or empty.
+
+    Returns:
+        Weight in grams as an integer
+    """
+    unit = (weight_unit or 'lb').strip().lower()
+    if unit in ('lb', 'lbs'):
+        return int(weight * 453.592)
+    elif unit in ('kg', 'kgs'):
+        return int(weight * 1000)
+    elif unit == 'oz':
+        return int(weight * 28.3495)
+    elif unit == 'g':
+        return int(weight)
+    else:
+        # Unknown unit — fall back to lb conversion
+        return int(weight * 453.592)
+
+
 def format_purchase_options_metafield(purchase_options: List[int]) -> str:
     """
     Format purchase options as a JSON object mapping numbers to labels.

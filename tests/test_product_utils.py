@@ -11,6 +11,7 @@ from src.product_utils import (
     should_calculate_shipping_weight,
     is_non_shipped_category,
     remove_weight_data_from_variants,
+    convert_weight_to_grams,
     PURCHASE_OPTION_LABELS
 )
 
@@ -223,3 +224,65 @@ class TestRemoveWeightDataFromVariants:
         result = remove_weight_data_from_variants(product)
         assert len(result['variants']) == 1
         assert result['variants'][0]['sku'] == '123'
+
+
+class TestConvertWeightToGrams:
+    """Test weight-to-grams conversion with different weight units"""
+
+    def test_pounds_to_grams(self):
+        """Test conversion from pounds (lb) to grams"""
+        result = convert_weight_to_grams(3.5, 'lb')
+        assert result == int(3.5 * 453.592)
+
+    def test_lbs_to_grams(self):
+        """Test conversion from lbs (plural) to grams"""
+        result = convert_weight_to_grams(3.5, 'lbs')
+        assert result == int(3.5 * 453.592)
+
+    def test_kilograms_to_grams(self):
+        """Test conversion from kg to grams"""
+        result = convert_weight_to_grams(3.5, 'kg')
+        assert result == int(3.5 * 1000)
+
+    def test_kgs_to_grams(self):
+        """Test conversion from kgs (plural) to grams"""
+        result = convert_weight_to_grams(3.5, 'kgs')
+        assert result == int(3.5 * 1000)
+
+    def test_ounces_to_grams(self):
+        """Test conversion from oz to grams"""
+        result = convert_weight_to_grams(16, 'oz')
+        assert result == int(16 * 28.3495)
+
+    def test_grams_passthrough(self):
+        """Test that grams are returned as-is"""
+        result = convert_weight_to_grams(500, 'g')
+        assert result == 500
+
+    def test_default_unit_is_lb(self):
+        """Test that missing/empty weight_unit defaults to lb"""
+        result = convert_weight_to_grams(3.5, '')
+        assert result == int(3.5 * 453.592)
+
+    def test_none_unit_defaults_to_lb(self):
+        """Test that None weight_unit defaults to lb"""
+        result = convert_weight_to_grams(3.5, None)
+        assert result == int(3.5 * 453.592)
+
+    def test_zero_weight(self):
+        """Test zero weight returns zero regardless of unit"""
+        assert convert_weight_to_grams(0, 'kg') == 0
+        assert convert_weight_to_grams(0, 'lb') == 0
+
+    def test_case_insensitive(self):
+        """Test that unit matching is case-insensitive"""
+        result = convert_weight_to_grams(3.5, 'KG')
+        assert result == int(3.5 * 1000)
+
+    def test_kg_vs_lb_different_results(self):
+        """Test the specific bug: kg should NOT use lb conversion factor"""
+        kg_result = convert_weight_to_grams(3.5, 'kg')
+        lb_result = convert_weight_to_grams(3.5, 'lb')
+        assert kg_result == 3500
+        assert lb_result == 1587
+        assert kg_result != lb_result

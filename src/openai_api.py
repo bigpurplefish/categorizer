@@ -58,6 +58,7 @@ from .product_utils import (
     should_calculate_shipping_weight,
     is_non_shipped_category,
     remove_weight_data_from_variants,
+    convert_weight_to_grams,
     html_to_shopify_rich_text
 )
 
@@ -832,7 +833,8 @@ def enhance_product_with_openai(
 
         # Update ALL variants with shipping weight and weight_data
         final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
-        final_shipping_weight_grams = int(final_shipping_weight * 453.592)  # Convert lbs to grams
+        weight_unit = weight_estimation.get('weight_unit', 'lb')
+        final_shipping_weight_grams = convert_weight_to_grams(final_shipping_weight, weight_unit)
 
         if 'variants' in enhanced_product and enhanced_product['variants']:
             for variant in enhanced_product['variants']:
@@ -852,6 +854,7 @@ def enhance_product_with_openai(
 
                 # Update Shopify weight fields
                 variant['weight'] = final_shipping_weight
+                variant['weight_unit'] = weight_unit
                 variant['grams'] = final_shipping_weight_grams
 
         logging.info(f"✅ Updated {len(enhanced_product.get('variants', []))} variants with shipping weight: {final_shipping_weight} lbs")
@@ -1881,12 +1884,14 @@ def enhance_products_with_openai_batch(
 
             # Add weight estimation
             final_shipping_weight = weight_estimation.get('final_shipping_weight', 0)
-            final_shipping_weight_grams = int(final_shipping_weight * 453.592)
+            weight_unit = weight_estimation.get('weight_unit', 'lb')
+            final_shipping_weight_grams = convert_weight_to_grams(final_shipping_weight, weight_unit)
 
             if 'variants' in enhanced_product and enhanced_product['variants']:
                 for variant in enhanced_product['variants']:
                     variant['weight_data'] = weight_estimation
                     variant['weight'] = final_shipping_weight
+                    variant['weight_unit'] = weight_unit
                     variant['grams'] = final_shipping_weight_grams
 
             # Initialize metafields array if not present
