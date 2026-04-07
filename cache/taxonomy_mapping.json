@@ -4,9 +4,9 @@
   "our_taxonomy_hash": "06405b2869c9cdab2de1f3f1ae7e13c7667d4a4c53a355b090c423080adea932",
   "provider": "openai",
   "model": "gpt-5",
-  "created_at": "2026-03-24T05:40:45.368562",
-  "category_count": 114,
-  "mapped_count": 77,
+  "created_at": "2026-03-28T21:33:01.141374",
+  "category_count": 107,
+  "mapped_count": 104,
   "mappings": {
     "Landscape and Construction > Pavers and Hardscaping > Pavers": {
       "shopify_category": "Hardware > Building Consumables > Masonry Consumables > Bricks & Concrete Blocks",
@@ -469,6 +469,186 @@
       "shopify_id": "gid://shopify/TaxonomyCategory/hg-15-1-4-2",
       "confidence": "medium",
       "reasoning": "Title indicates a knitted blanket intended for general home use; no mentions of baby/receiving/swaddle or outdoor use. Despite the smaller 30x40 size, the functional intent aligns with a household throw/lap blanket rather than a purely decorative drape or a baby-specific blanket."
+    },
+    "Pet Supplies > Cats > Bedding": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Beds > Caves",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-9-3",
+      "confidence": "medium",
+      "reasoning": "The 'Cozy Cat Cube' is an enclosed, soft hideaway/bed for cats, functioning primarily as a sleeping/resting space rather than furniture (e.g., trees/towers) or a carrier. Among available options, this aligns best with an enclosed pet bed style, i.e., Pet Beds > Caves."
+    },
+    "Pet Supplies > Dogs > Carriers": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Carriers & Crates > Hard-Sided Carriers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-16-5",
+      "confidence": "high",
+      "reasoning": "The title specifies a pet carrier, and the MidWest Spree is a known hard plastic, vented carrier with a metal door for transporting pets. It is not specifically air-travel approved or soft-sided, so the precise functional fit is Hard-Sided Carriers under Pet Carriers & Crates."
+    },
+    "Pet Supplies > Cats > Accessories": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Furniture > Cat Trees & Towers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-2-2-5",
+      "confidence": "high",
+      "reasoning": "The title explicitly indicates a cat furniture tree/tower designed for cats to climb and perch. This is functional pet furniture, not general decor, and matches the specific Shopify category for Cat Trees & Towers."
+    },
+    "Home and Gift > Gifts": {
+      "shopify_category": "Hardware > Hardware Accessories > Casters",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-6-3",
+      "confidence": "high",
+      "reasoning": "The product is a set of soft-wheel casters (replacement wheels) for office chairs with metal bases, intended for use on hard floors/chair mats. Functionally, these are casters—a hardware component—so the dedicated Casters category is the most precise and tax-appropriate choice. Categories like Office Chair Accessories are broader, and Chair Mats/Floor Protectors do not apply."
+    },
+    "Lawn and Garden > Garden Tools > Shovels": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Gardening Tools > Gardening Trowels",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-7-5",
+      "confidence": "high",
+      "reasoning": "Title specifies a garden trowel, a hand tool for digging/planting in soil. This is a gardening tool, not a masonry trowel or a decorative item. The most specific and functionally accurate category is Gardening Trowels."
+    },
+    "Pet Supplies > Cats > Toys": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Cat Supplies > Cat Toys > Feathers & Teasers",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-2-5-4",
+      "confidence": "high",
+      "reasoning": "The product is a cat toy specifically described as a 'Window Teaser.' Teaser toys (often feathered/dangling lures) are best classified under Cat Toys > Feathers & Teasers. The window mount is an attachment method, but the functional use is a teaser-style cat toy, not a wand or general interactive toy."
+    },
+    "Landscape and Construction > Paving Tools & Equipment > Screeds": {
+      "shopify_category": "Hardware > Tools > Masonry Tools",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-15-34",
+      "confidence": "medium",
+      "reasoning": "An aluminum screed is a concrete/paving tool used to level and strike off wet concrete, which places it within masonry/concrete finishing tools. There is no dedicated 'Screeds' node in the provided taxonomy, and it is not a measuring straight edge. Therefore the most accurate functional fit is Hardware > Tools > Masonry Tools."
+    },
+    "Landscape and Construction > Pavers and Hardscaping > Base Materials & Geotextiles": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Landscape Fabric",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-10",
+      "confidence": "high",
+      "reasoning": "The product is explicitly a landscape fabric (DeWitt NB324), used for weed control and as geotextile under landscaping/hardscaping. Shopify has a dedicated Landscape Fabric category under Lawn & Garden, which precisely matches the product’s function. No Hardware building-material subcategory provided is more accurate."
+    },
+    "Pet Supplies > Birds > Health": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Vitamins & Supplements > Calcium",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-42-2",
+      "confidence": "high",
+      "reasoning": "Cuttlebone is a calcium supplement for pet birds, used for mineral intake and beak conditioning. It is not a toy, treat, food, or cage accessory. The most specific functional match in the taxonomy is Pet Vitamins & Supplements > Calcium, aligning with the product’s health/supplement purpose."
+    },
+    "Pet Supplies > Birds > Toys": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Bird Supplies > Bird Toys",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-1-6",
+      "confidence": "high",
+      "reasoning": "The title clearly indicates a toy designed for pet birds (“Prevue Banana Stack Bird Toy”). Without details confirming a specific subtype (chew, foraging, ropes), the most accurate and tax-appropriate category is the general Bird Toys under Pet Supplies."
+    },
+    "Home and Gift > Home Decor > Wall Art": {
+      "shopify_category": "Home & Garden > Decor > Artwork > Posters, Prints, & Visual Artwork > Visual Artwork",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-4-2-3",
+      "confidence": "medium",
+      "reasoning": "Title and internal categorization indicate a finished decorative wall art piece (a horse image on canvas), not a blank crafting substrate. Therefore it belongs under Home & Garden decor artwork, specifically Visual Artwork within Posters, Prints, & Visual Artwork."
+    },
+    "Lawn and Garden > Garden Decor > Statues": {
+      "shopify_category": "Home & Garden > Decor > Lawn Ornaments & Garden Sculptures > Garden Sculptures",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-3-43-1",
+      "confidence": "high",
+      "reasoning": "The title and internal category indicate a decorative outdoor mallard statue for garden/lawn display. This is not a functional hunting decoy or construction material, so the specific garden sculpture category is the correct decor classification."
+    },
+    "Livestock and Farm > General Farm Supplies > Scoops": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Food Scoops",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-25",
+      "confidence": "medium",
+      "reasoning": "The product is a handheld scoop specifically for dispensing animal feed. Within the available taxonomy, the only functional match for a feed-dispensing scoop is Pet Food Scoops. It is not livestock feed itself, nor a feeder/waterer device, and it is not a kitchen or household scoop. While marketed for livestock (industrial/ag use), the function aligns best with the Pet Food Scoops category."
+    },
+    "Pet Supplies > Small Pets": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Vitamins & Supplements > Calcium",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-42-2",
+      "confidence": "high",
+      "reasoning": "This is a reptile calcium supplement with D3 (a nutritional additive), not a food or habitat item. The proper functional category is pet vitamins/supplements—specifically Calcium—ensuring correct tax treatment distinct from pet food or general small animal supplies."
+    },
+    "Landscape and Construction > Paving & Construction Supplies > Spikes": {
+      "shopify_category": "Hardware > Hardware Accessories > Ground Spikes",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-6-13",
+      "confidence": "medium",
+      "reasoning": "The title indicates long steel pins used to secure concrete forms or layout in construction. These are hammered into the ground as anchoring spikes, not decorative items, nails, or tent/canopy stakes. Among available categories, Ground Spikes best fits the functional use in construction/paving."
+    },
+    "Lawn and Garden > Garden Decor > Stakes": {
+      "shopify_category": "Home & Garden > Lawn & Garden > Gardening > Gardening Accessories",
+      "shopify_id": "gid://shopify/TaxonomyCategory/hg-12-1-5",
+      "confidence": "high",
+      "reasoning": "The title 'T-LABEL STAKES 6\" 25CT' indicates 6-inch T-shaped plant label stakes used to mark plants. These are functional gardening markers, not decorative items or plant supports. They fit best under Gardening Accessories."
+    },
+    "Livestock and Farm > Goats > Feed": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feed > Goat & Sheep Feed",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-2-3",
+      "confidence": "high",
+      "reasoning": "The title indicates a pelletized feed specifically for dairy goats. This is livestock feed (not pet food), and the most precise taxonomy node is Goat & Sheep Feed under Livestock Feed."
+    },
+    "Livestock and Farm > Sheep > Feed": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feed",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-2",
+      "confidence": "high",
+      "reasoning": "Title indicates an alpaca feed pellet (\"FIBRE PLT 15%\" = fiber/protein pellet), which is livestock feed for camelids. Shopify has no alpaca-specific feed node; the correct taxable class is Livestock Feed. Not pet food, not horse feed, and not craft fiber (despite the word 'fibre'). Internal categorization also points to livestock feed."
+    },
+    "Pet Supplies > Cats > Cleaning": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Flea & Tick Control",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-23",
+      "confidence": "high",
+      "reasoning": "The product’s primary function is flea and tick control for pets via a laundry additive. It is not a general laundry detergent, stain remover, or deodorizer; its purpose is antiparasitic control for pet-related fabrics. The closest and most accurate functional category is Pet Flea & Tick Control."
+    },
+    "Livestock and Farm > Goats > Health": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Health & Veterinary Supplies",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-6",
+      "confidence": "medium",
+      "reasoning": "Udder balm is a topical skin protectant primarily intended for livestock udders/teats to prevent chapping and irritation. Despite the note 'for Hand & Skin,' the product name (Udder Balm) and brand (Durvet, an animal health supplier) indicate agricultural/veterinary use. Mapping to Animal Husbandry > Health & Veterinary Supplies avoids misclassifying it as a human cosmetic, which could trigger different tax treatment. Not a vaccine/medication or surgical supply, so the parent Health & Veterinary Supplies level is most accurate."
+    },
+    "Lawn and Garden > Garden Tools > Wheelbarrows": {
+      "shopify_category": "Toys & Games > Toys > Riding Toys > Wagons",
+      "shopify_id": "gid://shopify/TaxonomyCategory/tg-5-20-5",
+      "confidence": "high",
+      "reasoning": "The title 'BIG RED WAGON W/ WOOD PANELS' matches the classic children's riding wagon (e.g., Radio Flyer style) rather than a garden wheelbarrow. Functionally it's a kids' riding toy, not a gardening tool, and should be taxed as a toy. Therefore the correct category is Riding Toys > Wagons."
+    },
+    "Landscape and Construction > Paving & Construction Supplies > Edging": {
+      "shopify_category": "Hardware > Fencing & Barriers > Garden Borders & Edging > Edging",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ha-3-5-2",
+      "confidence": "high",
+      "reasoning": "Title indicates an 8-foot aluminum edging piece (likely landscape/paver edging). This is a functional landscaping/building material used to create borders around pavers, lawns, or beds, not a decorative stone and not a lawn-edger tool or blade. Shopify provides a precise category for landscape edging under Hardware > Fencing & Barriers > Garden Borders & Edging > Edging, which aligns with the internal categorization of Paving & Construction Supplies > Edging and ensures correct tax treatment as a building/landscape material."
+    },
+    "Pet Supplies > Small Pets > Cages": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Small Animal Supplies > Small Animal Habitats & Cages",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-47-4",
+      "confidence": "high",
+      "reasoning": "A rabbit hutch is a housing/enclosure specifically for small animals (rabbits). The correct functional category is Small Animal Habitats & Cages rather than generic pet containment or dog/cat housing."
+    },
+    "Pet Supplies > Cats > Collars": {
+      "shopify_category": "Animals & Pet Supplies > Pet Supplies > Pet Flea & Tick Control > Flea & Tick Collars",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-2-23-1",
+      "confidence": "high",
+      "reasoning": "The product is a flea & tick control collar for cats. Its primary function is pest control, not general wearable/ID use. Therefore it belongs under Pet Flea & Tick Control > Flea & Tick Collars rather than general Pet Collars & Harnesses."
+    },
+    "Livestock and Farm > Sheep > Accessories": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1",
+      "confidence": "medium",
+      "reasoning": "These are manual sheep-shearing shears used for livestock grooming in agricultural contexts. Among the available categories, Animal Husbandry best fits a farm/livestock tool. Pet grooming, human hair, gardening, or metal/kitchen shears categories are functionally incorrect and could misclassify tax treatment."
+    },
+    "Livestock and Farm > Goats > Accessories": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Halters",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-4",
+      "confidence": "high",
+      "reasoning": "The title specifies a goat halter, which is a functional restraint/leading device for livestock. In Shopify's taxonomy, non-horse halters for farm animals belong under Livestock Halters. Equestrian > Horse Halters is horse-specific and pet collar/harness categories are for companion animals, not livestock."
+    },
+    "Livestock and Farm > Chickens": {
+      "shopify_category": "Animals & Pet Supplies > Live Animals",
+      "shopify_id": "gid://shopify/TaxonomyCategory/ap-1",
+      "confidence": "high",
+      "reasoning": "The title explicitly describes a specific live chicken breed/sex (Rhode Island Red rooster). There is no indication it is meat, decorative, or a supply. Among the provided taxonomy, the correct functional category for a live chicken is Live Animals, not bird supplies or food items. This aligns with your internal 'Livestock and Farm > Chickens' and ensures proper tax treatment for live animals."
+    },
+    "Livestock and Farm > Horses > Feed (includes hay)": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Equestrian > Horse Care > Horse Treats",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-5-1-6",
+      "confidence": "high",
+      "reasoning": "Horse feed and treats including hay. Maps to Horse Care taxonomy. Alias for 'Feed' subcategory with hay qualifier."
+    },
+    "Livestock and Farm > Goats > Feed (includes hay)": {
+      "shopify_category": "Business & Industrial > Agriculture > Animal Husbandry > Livestock Feed > Goat & Sheep Feed",
+      "shopify_id": "gid://shopify/TaxonomyCategory/bi-2-1-2-3",
+      "confidence": "high",
+      "reasoning": "Goat feed including hay products. Maps to Goat & Sheep Feed taxonomy. Alias for 'Feed' subcategory with hay qualifier."
+    },
+    "Hunting and Fishing > Deer > Blinds": {
+      "shopify_category": "Sporting Goods > Outdoor Recreation > Hunting & Shooting > Hunting > Hunting Blinds & Screens",
+      "shopify_id": "gid://shopify/TaxonomyCategory/sg-4-9-3-3",
+      "confidence": "high",
+      "reasoning": "Hunting blinds and tower blinds for deer hunting. Maps directly to Shopify's Hunting Blinds & Screens category."
     }
   }
 }
