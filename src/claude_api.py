@@ -1564,7 +1564,7 @@ def batch_enhance_products(
     products: List[Dict],
     cfg: Dict,
     status_fn,
-    taxonomy_path: str = "/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md",
+    taxonomy_path: str = "/Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md",
     voice_tone_path: str = "docs/VOICE_AND_TONE_GUIDELINES.md"
 ) -> List[Dict]:
     """

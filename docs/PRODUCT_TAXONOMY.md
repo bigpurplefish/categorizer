@@ -2,7 +2,7 @@
 
 > **⚠️ DEPRECATED**: This local copy is outdated and should not be used.
 >
-> **Use the shared documentation instead**: `/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md`
+> **Use the shared documentation instead**: `/Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md`
 >
 > The shared version includes:
 > - Purchase and fulfillment options

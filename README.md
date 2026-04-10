@@ -64,7 +64,7 @@ Configure API keys via the **API Settings** button in the toolbar.
 
 The application uses shared documentation:
 
-- **Taxonomy Document**: `/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md`
+- **Taxonomy Document**: `/Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md`
 - **Voice/Tone Guidelines**: `/Users/moosemarketer/Code/shared-docs/python/VOICE_AND_TONE_GUIDELINES.md`
 
 These paths are configured in `config.json` and can be modified if needed.

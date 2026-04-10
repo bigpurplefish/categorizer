@@ -478,7 +478,7 @@ def enhance_product_with_openai(
         #     department,
         #     category,
         #     subcategory,
-        #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
+        #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md"
         # )
 
         if False:  # DISABLED validation block
@@ -515,7 +515,7 @@ def enhance_product_with_openai(
             logging.error(f"How to fix:")
             logging.error(f"  {suggestions.get('suggestion', 'Update PRODUCT_TAXONOMY.md or correct product data')}")
             logging.error("")
-            logging.error(f"Taxonomy file: /Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md")
+            logging.error(f"Taxonomy file: /Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md")
             logging.error("=" * 80)
 
             # Display to user via status function
@@ -555,7 +555,7 @@ def enhance_product_with_openai(
                 log_and_status(status_fn, f"  {suggestions.get('suggestion', 'Update PRODUCT_TAXONOMY.md or correct product data')}", "error")
                 log_and_status(status_fn, "", "error")
                 log_and_status(status_fn, f"📁 Taxonomy file:", "error")
-                log_and_status(status_fn, f"  /Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md", "error")
+                log_and_status(status_fn, f"  /Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md", "error")
                 log_and_status(status_fn, "", "error")
                 log_and_status(status_fn, "Processing stopped. Fix the taxonomy and try again.", "error")
                 log_and_status(status_fn, "=" * 80, "error")
@@ -1866,7 +1866,7 @@ def enhance_products_with_openai_batch(
             #     department,
             #     category,
             #     subcategory,
-            #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/python/PRODUCT_TAXONOMY.md"
+            #     taxonomy_path="/Users/moosemarketer/Code/shared-docs/PRODUCT_TAXONOMY.md"
             # )
             #
             # if not is_valid:
